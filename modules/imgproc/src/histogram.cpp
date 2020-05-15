@@ -1803,11 +1803,15 @@ void cv::calcBackProject( const Mat* images, int nimages, const int* channels,
         calcSparseBackProj_8u(ptrs, deltas, imsize, hist, dims, ranges,
                               _uniranges, (float)scale, uniform);
     else if( depth == CV_16U )
-        calcSparseBackProj_<ushort, ushort>(ptrs, deltas, imsize, hist, dims, ranges,
-                                          _uniranges, (float)scale, uniform );
+    {
+        // calcSparseBackProj_<ushort, ushort>(ptrs, deltas, imsize, hist, dims, ranges,
+        //                                   _uniranges, (float)scale, uniform );
+    }
     else if( depth == CV_32F )
-        calcSparseBackProj_<float, float>(ptrs, deltas, imsize, hist, dims, ranges,
-                                          _uniranges, (float)scale, uniform );
+    {
+        // calcSparseBackProj_<float, float>(ptrs, deltas, imsize, hist, dims, ranges,
+        //                                   _uniranges, (float)scale, uniform );
+    }
     else
         CV_Error(CV_StsUnsupportedFormat, "");
 }

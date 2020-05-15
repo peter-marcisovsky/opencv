@@ -926,32 +926,32 @@ void BackgroundSubtractorMOG2Impl::getBackgroundImage_intern(OutputArray backgro
 
 void BackgroundSubtractorMOG2Impl::getBackgroundImage(OutputArray backgroundImage) const
 {
-    CV_Assert(frameType == CV_8UC1 || frameType == CV_8UC3 || frameType == CV_32FC1 || frameType == CV_32FC3);
+//     CV_Assert(frameType == CV_8UC1 || frameType == CV_8UC3 || frameType == CV_32FC1 || frameType == CV_32FC3);
 
-#ifdef HAVE_OPENCL
-    if (opencl_ON)
-    {
-        CV_OCL_RUN(opencl_ON, ocl_getBackgroundImage(backgroundImage))
+// #ifdef HAVE_OPENCL
+//     if (opencl_ON)
+//     {
+//         CV_OCL_RUN(opencl_ON, ocl_getBackgroundImage(backgroundImage))
 
-        opencl_ON = false;
-    }
-#endif
+//         opencl_ON = false;
+//     }
+// #endif
 
-    switch(frameType)
-    {
-    case CV_8UC1:
-        getBackgroundImage_intern<uchar,1>(backgroundImage);
-        break;
-    case CV_8UC3:
-        getBackgroundImage_intern<uchar,3>(backgroundImage);
-        break;
-    case CV_32FC1:
-        getBackgroundImage_intern<float,1>(backgroundImage);
-        break;
-    case CV_32FC3:
-        getBackgroundImage_intern<float,3>(backgroundImage);
-        break;
-    }
+//     switch(frameType)
+//     {
+//     case CV_8UC1:
+//         getBackgroundImage_intern<uchar,1>(backgroundImage);
+//         break;
+//     case CV_8UC3:
+//         getBackgroundImage_intern<uchar,3>(backgroundImage);
+//         break;
+//     case CV_32FC1:
+//         getBackgroundImage_intern<float,1>(backgroundImage);
+//         break;
+//     case CV_32FC3:
+//         getBackgroundImage_intern<float,3>(backgroundImage);
+//         break;
+//     }
 }
 
 Ptr<BackgroundSubtractorMOG2> createBackgroundSubtractorMOG2(int _history, double _varThreshold,

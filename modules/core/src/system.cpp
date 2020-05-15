@@ -999,10 +999,10 @@ String tempfile( const char* suffix )
         fname = fname + "__opencv_temp.XXXXXX";
     }
 
-    const int fd = mkstemp((char*)fname.c_str());
-    if (fd == -1) return String();
+    // const int fd = mkstemp((char*)fname.c_str());
+    // if (fd == -1) return String();
 
-    close(fd);
+    // close(fd);
     remove(fname.c_str());
 # endif
 
