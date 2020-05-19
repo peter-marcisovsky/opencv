@@ -41,6 +41,7 @@
 //
 //M*/
 
+#define _DEFAULT_SOURCE 1
 #include "precomp.hpp"
 #include <iostream>
 #include <ostream>
@@ -999,10 +1000,10 @@ String tempfile( const char* suffix )
         fname = fname + "__opencv_temp.XXXXXX";
     }
 
-    // const int fd = mkstemp((char*)fname.c_str());
-    // if (fd == -1) return String();
+    const int fd = mkstemp((char*)fname.c_str());
+    if (fd == -1) return String();
 
-    // close(fd);
+    close(fd);
     remove(fname.c_str());
 # endif
 
