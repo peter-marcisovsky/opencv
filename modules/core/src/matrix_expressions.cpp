@@ -21,7 +21,7 @@ static void checkOperandsExist(const Mat& a)
 {
     if (a.empty())
     {
-        CV_Error(CV_StsBadArg, "Matrix operand is an empty matrix.");
+        //CV_Error(CV_StsBadArg, "Matrix operand is an empty matrix.");
     }
 }
 
@@ -29,7 +29,7 @@ static void checkOperandsExist(const Mat& a, const Mat& b)
 {
     if (a.empty() || b.empty())
     {
-        CV_Error(CV_StsBadArg, "One or more matrix operands are empty.");
+        //CV_Error(CV_StsBadArg, "One or more matrix operands are empty.");
     }
 }
 
