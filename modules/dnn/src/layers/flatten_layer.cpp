@@ -72,9 +72,12 @@ public:
 
     virtual bool supportBackend(int backendId) CV_OVERRIDE
     {
+#ifdef HAVE_INF_ENGINE
+        if (backendId == DNN_BACKEND_INFERENCE_ENGINE_NGRAPH)
+            return true;
+#endif
         return backendId == DNN_BACKEND_OPENCV ||
-               backendId == DNN_BACKEND_CUDA ||
-               ((backendId == DNN_BACKEND_INFERENCE_ENGINE_NN_BUILDER_2019 || backendId == DNN_BACKEND_INFERENCE_ENGINE_NGRAPH) && haveInfEngine());
+               backendId == DNN_BACKEND_CUDA;
     }
 
     bool getMemoryShapes(const std::vector<MatShape> &inputs,
@@ -89,8 +92,8 @@ public:
         }
 
         int numAxes = inputs[0].size();
-        int startAxis = clamp(_startAxis, numAxes);
-        int endAxis = clamp(_endAxis, numAxes);
+        int startAxis = normalize_axis(_startAxis, numAxes);
+        int endAxis = normalize_axis(_endAxis, numAxes);
 
         CV_Assert(startAxis >= 0);
         CV_Assert(endAxis >= startAxis && endAxis < (int)numAxes);
@@ -107,7 +110,6 @@ public:
         {
             outputShapeVec.push_back(inputs[0][i]);
         }
-        CV_Assert(outputShapeVec.size() <= 4);
 
         outputs.resize(inputs.size(), outputShapeVec);
 
@@ -120,8 +122,8 @@ public:
         inputs_arr.getMatVector(inputs);
 
         int numAxes = inputs[0].dims;
-        _startAxis = clamp(_startAxis, numAxes);
-        _endAxis = clamp(_endAxis, numAxes);
+        _startAxis = normalize_axis(_startAxis, numAxes);
+        _endAxis = normalize_axis(_endAxis, numAxes);
     }
 
 #ifdef HAVE_OPENCL
@@ -172,31 +174,16 @@ public:
     }
 
 
-#ifdef HAVE_DNN_IE_NN_BUILDER_2019
-    virtual Ptr<BackendNode> initInfEngine(const std::vector<Ptr<BackendWrapper> >& inputs) CV_OVERRIDE
-    {
-        InferenceEngine::Builder::Layer ieLayer(name);
-        ieLayer.setName(name);
-        ieLayer.setType("Flatten");
-        ieLayer.getParameters()["axis"] = (size_t)_startAxis;
-        ieLayer.getParameters()["end_axis"] = _endAxis;  // Do not cast to size_t because it might be negative.
-        ieLayer.setInputPorts(std::vector<InferenceEngine::Port>(1));
-        ieLayer.setOutputPorts(std::vector<InferenceEngine::Port>(1));
-        return Ptr<BackendNode>(new InfEngineBackendNode(ieLayer));
-    }
-#endif  // HAVE_DNN_IE_NN_BUILDER_2019
-
-
 #ifdef HAVE_DNN_NGRAPH
-virtual Ptr<BackendNode> initNgraph(const std::vector<Ptr<BackendWrapper> >& inputs,
-                                    const std::vector<Ptr<BackendNode> >& nodes) CV_OVERRIDE
-{
+    virtual Ptr<BackendNode> initNgraph(const std::vector<Ptr<BackendWrapper> >& inputs,
+                                        const std::vector<Ptr<BackendNode> >& nodes) CV_OVERRIDE
+    {
         auto& ieInpNode = nodes[0].dynamicCast<InfEngineNgraphNode>()->node;
         std::vector<size_t> dims = ieInpNode->get_shape();
 
         int numAxes = dims.size();
-        int startAxis = clamp(_startAxis, numAxes);
-        int endAxis = clamp(_endAxis, numAxes);
+        int startAxis = normalize_axis(_startAxis, numAxes);
+        int endAxis = normalize_axis(_endAxis, numAxes);
 
         CV_Assert(startAxis >= 0);
         CV_Assert(endAxis >= startAxis && endAxis < numAxes);
@@ -227,6 +214,11 @@ virtual Ptr<BackendNode> initNgraph(const std::vector<Ptr<BackendWrapper> >& inp
     }
 #endif
 
+    virtual bool tryQuantize(const std::vector<std::vector<float> > &scales,
+                             const std::vector<std::vector<int> > &zeropoints, LayerParams& params) CV_OVERRIDE
+    {
+        return true;
+    }
 
     int _startAxis;
     int _endAxis;

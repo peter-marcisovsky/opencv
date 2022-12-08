@@ -59,6 +59,8 @@ DECLARE_CV_PAUSE
 // https://github.com/riscv/riscv-isa-manual/issues/43
 // #   define CV_PAUSE(v) do { for (int __delay = (v); __delay > 0; --__delay) { asm volatile("pause"); } } while (0)
 #   define CV_PAUSE(v) do { for (int __delay = (v); __delay > 0; --__delay) { asm volatile("nop"); } } while (0)
+# elif defined __GNUC__ && defined __loongarch__
+#   define CV_PAUSE(v) do { for (int __delay = (v); __delay > 0; --__delay) { asm volatile("nop"); } } while (0)
 # else
 #   warning "Can't detect 'pause' (CPU-yield) instruction on the target platform. Specify CV_PAUSE() definition via compiler flags."
 #   define CV_PAUSE(...) do { /* no-op: works, but not effective */ } while (0)
@@ -356,6 +358,16 @@ public:
 };
 
 
+// Disable thread sanitization check when CV_USE_GLOBAL_WORKERS_COND_VAR is not
+// set because it triggers as the main thread reads isActive while the children
+// thread writes it (but it all works out because a mutex is locked in the main
+// thread and isActive re-checked).
+// This is to solve issue #19463.
+#if !defined(CV_USE_GLOBAL_WORKERS_COND_VAR) && defined(__clang__) && defined(__has_feature)
+#if __has_feature(thread_sanitizer)
+__attribute__((no_sanitize("thread")))
+#endif
+#endif
 void WorkerThread::thread_body()
 {
     (void)cv::utils::getThreadID(); // notify OpenCV about new thread
@@ -570,6 +582,11 @@ void ThreadPool::run(const Range& range, const ParallelLoopBody& body, double ns
             {
                 WorkerThread& thread = *(threads[i].get());
                 if (
+#if defined(__clang__) && defined(__has_feature)
+#if __has_feature(thread_sanitizer)
+                        1 ||  // Robust workaround to avoid data race warning of `thread.job`
+#endif
+#endif
 #if !defined(CV_USE_GLOBAL_WORKERS_COND_VAR)
                         thread.isActive ||
 #endif

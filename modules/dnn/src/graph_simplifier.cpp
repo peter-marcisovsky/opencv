@@ -63,9 +63,6 @@ int Subgraph::getInputNodeId(const Ptr<ImportGraphWrapper>& net,
 {
     CV_Assert(inpId < node->getNumInputs());
     std::string name = node->getInputName(inpId);
-    // If operation produces several tensors, they are specified by index
-    // after ':' character. In example, "input:0".
-    name = name.substr(0, name.rfind(':'));
     const int numNodes = net->getNumNodes();
     for (int i = 0; i < numNodes; ++i)
     {
@@ -111,7 +108,7 @@ bool Subgraph::match(const Ptr<ImportGraphWrapper>& net, int nodeId,
 
         for (int j = 0; j < inputNodes.size(); ++j)
         {
-            if (nodes[inputNodes[j]].empty())  // Unknown input node type.
+            if (nodes[inputNodes[j]].empty() || node->getInputName(j).empty())  // Unknown input node type.
                 continue;
             nodeId = getInputNodeId(net, node, j);
             const Ptr<ImportNodeWrapper> inpNode = net->getNode(nodeId);

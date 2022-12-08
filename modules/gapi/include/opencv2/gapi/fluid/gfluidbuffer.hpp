@@ -25,7 +25,7 @@ namespace fluid {
 struct Border
 {
     // This constructor is required to support existing kernels which are part of G-API
-    Border(int _type, cv::Scalar _val) : type(_type), value(_val) {};
+    Border(int _type, cv::Scalar _val) : type(_type), value(_val) {}
 
     int type;
     cv::Scalar value;
@@ -56,8 +56,6 @@ public:
         }
     };
 
-    View() = default;
-
     const inline uint8_t* InLineB(int index) const // -(w-1)/2...0...+(w-1)/2 for Filters
     {
         return m_cache->linePtr(index);
@@ -80,6 +78,7 @@ public:
     Priv& priv();               // internal use only
     const Priv& priv() const;   // internal use only
 
+    View();
     View(std::unique_ptr<Priv>&& p);
     View(View&& v);
     View& operator=(View&& v);
@@ -87,7 +86,7 @@ public:
 
 private:
     std::unique_ptr<Priv> m_priv;
-    const Cache* m_cache;
+    const Cache* m_cache = nullptr;
 };
 
 class GAPI_EXPORTS Buffer

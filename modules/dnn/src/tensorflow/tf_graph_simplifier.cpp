@@ -19,6 +19,16 @@ CV__DNN_INLINE_NS_BEGIN
 using ::google::protobuf::RepeatedField;
 using ::google::protobuf::MapPair;
 
+static Mat getTensorContentRef_(const tensorflow::TensorProto& tensor);
+static inline
+bool isAlignedMat(const Mat& m)
+{
+    int depth = m.depth();
+    int alignment = CV_ELEM_SIZE1(depth);
+    return (((size_t)m.data) & (alignment - 1)) == 0;
+}
+
+
 class TFNodeWrapper : public ImportNodeWrapper
 {
 public:
@@ -31,7 +41,10 @@ public:
 
     virtual std::string getInputName(int idx) const CV_OVERRIDE
     {
-        return node->input(idx);
+        // If operation produces several tensors, they are specified by index
+        // after ':' character. In example, "input:0".
+        std::string name = node->input(idx);
+        return name.substr(0, name.rfind(':'));
     }
 
     virtual std::string getType() const CV_OVERRIDE
@@ -495,8 +508,9 @@ public:
     ResizeBilinearSubgraph()
     {
         int input = addNodeToMatch("");
+        int shapeSource = addNodeToMatch("");
 
-        int shape = addNodeToMatch("Shape", input);
+        int shape = addNodeToMatch("Shape", shapeSource);
         int stack = addNodeToMatch("Const");
         int stack_1 = addNodeToMatch("Const");
         int stack_2 = addNodeToMatch("Const");
@@ -504,7 +518,7 @@ public:
         int factorY = addNodeToMatch("Const");
         int mul = addNodeToMatch("Mul", strided_slice, factorY);
 
-        shape = addNodeToMatch("Shape", input);
+        shape = addNodeToMatch("Shape", shapeSource);
         stack = addNodeToMatch("Const");
         stack_1 = addNodeToMatch("Const");
         stack_2 = addNodeToMatch("Const");
@@ -516,6 +530,51 @@ public:
 
         addNodeToMatch("ResizeBilinear", input, pack);
         setFusedNode("ResizeBilinear", input, factorY, factorX);
+    }
+};
+
+// In case of resizing by factor.
+class ResizeBilinearSubgraphDown : public TFSubgraph
+{
+public:
+    ResizeBilinearSubgraphDown()
+    {
+        int input = addNodeToMatch("");
+        int shapeSource = addNodeToMatch("");
+
+        int shape = addNodeToMatch("Shape", shapeSource);
+        int stack = addNodeToMatch("Const");
+        int stack_1 = addNodeToMatch("Const");
+        int stack_2 = addNodeToMatch("Const");
+        int strided_slice = addNodeToMatch("StridedSlice", shape, stack, stack_1, stack_2);
+        int factorY = addNodeToMatch("Const");
+        int div = addNodeToMatch("RealDiv", addNodeToMatch("Cast", strided_slice), factorY);
+        int cast = addNodeToMatch("Cast", div);
+
+        shape = addNodeToMatch("Shape", shapeSource);
+        stack = addNodeToMatch("Const");
+        stack_1 = addNodeToMatch("Const");
+        stack_2 = addNodeToMatch("Const");
+        strided_slice = addNodeToMatch("StridedSlice", shape, stack, stack_1, stack_2);
+        int factorX = addNodeToMatch("Const");
+        int div_1 = addNodeToMatch("RealDiv", addNodeToMatch("Cast", strided_slice), factorX);
+        int cast_1 = addNodeToMatch("Cast", div_1);
+
+        int pack = addNodeToMatch("Pack", cast, cast_1);
+
+        addNodeToMatch("ResizeBilinear", input, pack);
+        setFusedNode("ResizeBilinear", input, factorY, factorX);
+    }
+
+    virtual void finalize(tensorflow::GraphDef&, tensorflow::NodeDef* fusedNode,
+                          std::vector<tensorflow::NodeDef*>& inputNodes) CV_OVERRIDE
+    {
+
+        for (int i = 1; i < 3; ++i)
+        {
+            tensorflow::TensorProto* factor = inputNodes[i]->mutable_attr()->at("value").mutable_tensor();
+            factor->set_double_val(0, 1.0 / factor->double_val(0));
+        }
     }
 };
 
@@ -670,13 +729,39 @@ public:
     {
         if (!negativeScales)
         {
-            Mat scales = getTensorContent(inputNodes[1]->attr().at("value").tensor(), /*copy*/false);
-            scales *= -1;
+            Mat scalesRef = getTensorContentRef_(inputNodes[1]->attr().at("value").tensor());
+            // FIXME: This breaks the const guarantees of tensor() by writing to scalesRef
+            if (isAlignedMat(scalesRef))
+            {
+                scalesRef *= -1;
+            }
+            else
+            {
+                Mat scales = scalesRef.clone() * -1;
+                CV_Assert(scalesRef.isContinuous());
+                CV_Assert(scales.isContinuous());
+                memcpy(scalesRef.data, scales.data, scales.total() * scales.elemSize());
+            }
         }
     }
 
 private:
     bool negativeScales;
+};
+
+class ClipByValueSubgraph : public TFSubgraph
+{
+public:
+    ClipByValueSubgraph()
+    {
+        int input = addNodeToMatch("");
+        int maxValue = addNodeToMatch("Const");
+        int minimum = addNodeToMatch("Minimum", input, maxValue);
+        int minValue = addNodeToMatch("Const");
+        addNodeToMatch("Maximum", minimum, minValue);
+
+        setFusedNode("ClipByValue", input, minValue, maxValue);
+    }
 };
 
 void simplifySubgraphs(tensorflow::GraphDef& net)
@@ -702,6 +787,8 @@ void simplifySubgraphs(tensorflow::GraphDef& net)
     subgraphs.push_back(Ptr<Subgraph>(new PReLUSubgraph(true)));
     subgraphs.push_back(Ptr<Subgraph>(new PReLUSubgraph(false)));
     subgraphs.push_back(Ptr<Subgraph>(new FlattenProdSubgraph()));
+    subgraphs.push_back(Ptr<Subgraph>(new ResizeBilinearSubgraphDown()));
+    subgraphs.push_back(Ptr<Subgraph>(new ClipByValueSubgraph()));
 
     for (int i = 0; i < net.node_size(); ++i)
     {
@@ -742,12 +829,19 @@ void RemoveIdentityOps(tensorflow::GraphDef& net)
             IdentityOpsMap::iterator it = identity_ops.find(input_op_name);
 
             if (it != identity_ops.end()) {
+                std::set<String> loopCheckSet;
                 // In case of Identity after Identity
                 while (true)
                 {
                     IdentityOpsMap::iterator nextIt = identity_ops.find(it->second);
                     if (nextIt != identity_ops.end())
+                    {
+                        // Loop check
+                        if (loopCheckSet.find(it->second) != loopCheckSet.end())
+                            CV_Error(Error::StsError, "Found a loop in your input Tensorflow model, which is illegal!");
+                        loopCheckSet.insert(it->second);
                         it = nextIt;
+                    }
                     else
                         break;
                 }
@@ -766,7 +860,8 @@ void RemoveIdentityOps(tensorflow::GraphDef& net)
     }
 }
 
-Mat getTensorContent(const tensorflow::TensorProto &tensor, bool copy)
+// NB: returned Mat::data pointer may be unaligned
+Mat getTensorContentRef_(const tensorflow::TensorProto& tensor)
 {
     const std::string& content = tensor.tensor_content();
     Mat m;
@@ -838,7 +933,18 @@ Mat getTensorContent(const tensorflow::TensorProto &tensor, bool copy)
             CV_Error(Error::StsError, "Tensor's data type is not supported");
             break;
     }
-    return copy ? m.clone() : m;
+
+    return m;
+}
+
+Mat getTensorContent(const tensorflow::TensorProto& tensor, bool forceCopy)
+{
+    // If necessary clone m to have aligned data pointer
+    Mat m = getTensorContentRef_(tensor);
+    if (forceCopy || !isAlignedMat(m))
+        return m.clone();
+    else
+        return m;
 }
 
 void releaseTensor(tensorflow::TensorProto* tensor)
@@ -891,6 +997,7 @@ void sortByExecutionOrder(tensorflow::GraphDef& net)
         nodesMap.insert(std::make_pair(node.name(), i));
     }
 
+    CV_CheckEQ(nodesMap.size(), (size_t)net.node_size(), "Node names must be unique");
     // Indices of nodes which use specific node as input.
     std::vector<std::vector<int> > edges(nodesMap.size());
     std::vector<int> numRefsToAdd(nodesMap.size(), 0);
@@ -908,7 +1015,7 @@ void sortByExecutionOrder(tensorflow::GraphDef& net)
             nodesMapIt = nodesMap.find(inpName);
             if (nodesMapIt != nodesMap.end())
             {
-                edges[nodesMapIt->second].push_back(i);
+                edges.at(nodesMapIt->second).push_back(i);
                 numInputsInGraph += 1;
             }
         }
@@ -920,11 +1027,11 @@ void sortByExecutionOrder(tensorflow::GraphDef& net)
             {
                 int numControlEdges = 0;
                 for (int j = 0; j < numInputsInGraph; ++j)
-                    numControlEdges += node.input(j)[0] == '^';
-                numRefsToAdd[i] = numControlEdges + 1;
+                    numControlEdges += node.input(j).at(0) == '^';
+                numRefsToAdd.at(i) = numControlEdges + 1;
             }
             else
-                numRefsToAdd[i] = numInputsInGraph;
+                numRefsToAdd.at(i) = numInputsInGraph;
         }
     }
 
@@ -936,17 +1043,16 @@ void sortByExecutionOrder(tensorflow::GraphDef& net)
         nodesToAdd.pop_back();
 
         permIds.push_back(nodeToAdd);
-
-        for (int i = 0; i < edges[nodeToAdd].size(); ++i)
+        for (int i = 0; i < edges.at(nodeToAdd).size(); ++i)
         {
-            int consumerId = edges[nodeToAdd][i];
-            if (numRefsToAdd[consumerId] > 0)
+            int consumerId = edges.at(nodeToAdd).at(i);
+            if (numRefsToAdd.at(consumerId) > 0)
             {
-                if (numRefsToAdd[consumerId] == 1)
+                if (numRefsToAdd.at(consumerId) == 1)
                     nodesToAdd.push_back(consumerId);
                 else
-                    CV_Assert(numRefsToAdd[consumerId] >= 0);
-                numRefsToAdd[consumerId] -= 1;
+                    CV_Assert(numRefsToAdd.at(consumerId) >= 0);
+                numRefsToAdd.at(consumerId) -= 1;
             }
         }
     }
