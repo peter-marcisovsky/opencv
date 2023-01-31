@@ -1394,7 +1394,7 @@ static inline void trilinearPackedInterpolate(const v_uint16x8& inX, const v_uin
     v_mul_expand(v_setall_u16(3*8*LAB_LUT_DIM*LAB_LUT_DIM), idxsZ, addrDw10, addrDw11);
     addrDw0 += addrDw10; addrDw1 += addrDw11;
 
-    unsigned int CV_DECL_ALIGNED(16) addrofs[8];
+    uint32_t CV_DECL_ALIGNED(16) addrofs[8];
     v_store_aligned(addrofs, addrDw0);
     v_store_aligned(addrofs + 4, addrDw1);
 
