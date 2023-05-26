@@ -228,7 +228,7 @@ private:
     ufixedpoint32(uint32_t _val) : val(_val) {}
     static CV_ALWAYS_INLINE uint32_t fixedround(const uint32_t& _val) { return (_val + ((1 << fixedShift) >> 1)); }
 public:
-    static const int16_t fixedShift = 16;
+    static const int32_t fixedShift = 16;
 
     typedef ufixedpoint64 WT;
     typedef uint32_t raw_t;
@@ -293,7 +293,7 @@ public:
     CV_ALWAYS_INLINE fixedpoint16& operator = (const int8_t& _val) { val = ((int16_t)_val) << fixedShift; return *this; }
     CV_ALWAYS_INLINE fixedpoint16& operator = (const cv::softdouble& _val) { val = (int16_t)cvRound(_val * cv::softdouble((1 << fixedShift))); return *this; }
     CV_ALWAYS_INLINE fixedpoint16& operator = (const fixedpoint16& _val) { val = _val.val; return *this; }
-    CV_ALWAYS_INLINE fixedpoint16 operator * (const int8_t& val2) const { return cv::saturate_cast<int16_t>((int)val * val2); }
+    CV_ALWAYS_INLINE fixedpoint16 operator * (const int8_t& val2) const { return cv::saturate_cast<int16_t>((int32_t)val * val2); }
     CV_ALWAYS_INLINE fixedpoint32 operator * (const fixedpoint16& val2) const { return (int32_t)val * (int32_t)(val2.val); }
     CV_ALWAYS_INLINE fixedpoint16 operator + (const fixedpoint16& val2) const
     {
