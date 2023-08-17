@@ -123,25 +123,26 @@ static bool IPPSet(const cv::Scalar &value, void *dataPointer, int step, IppiSiz
 #endif
 
 /************** interpolation formulas and tables ***************/
+#define ESP_BUILD_FIX_SIZE 2
 
 const int INTER_REMAP_COEF_BITS=15;
 const int INTER_REMAP_COEF_SCALE=1 << INTER_REMAP_COEF_BITS;
 
-static uchar NNDeltaTab_i[INTER_TAB_SIZE2][2];
+static uchar NNDeltaTab_i[ESP_BUILD_FIX_SIZE][2];
 
-static float BilinearTab_f[INTER_TAB_SIZE2][2][2];
-static short BilinearTab_i[INTER_TAB_SIZE2][2][2];
+static float BilinearTab_f[ESP_BUILD_FIX_SIZE][2][2];
+static short BilinearTab_i[ESP_BUILD_FIX_SIZE][2][2];
 
 #if CV_SIMD128
-static short BilinearTab_iC4_buf[INTER_TAB_SIZE2+2][2][8];
+static short BilinearTab_iC4_buf[ESP_BUILD_FIX_SIZE+2][2][8];
 static short (*BilinearTab_iC4)[2][8] = (short (*)[2][8])alignPtr(BilinearTab_iC4_buf, 16);
 #endif
 
-static float BicubicTab_f[INTER_TAB_SIZE2][4][4];
-static short BicubicTab_i[INTER_TAB_SIZE2][4][4];
+static float BicubicTab_f[ESP_BUILD_FIX_SIZE][4][4];
+static short BicubicTab_i[ESP_BUILD_FIX_SIZE][4][4];
 
-static float Lanczos4Tab_f[INTER_TAB_SIZE2][8][8];
-static short Lanczos4Tab_i[INTER_TAB_SIZE2][8][8];
+static float Lanczos4Tab_f[ESP_BUILD_FIX_SIZE][8][8];
+static short Lanczos4Tab_i[ESP_BUILD_FIX_SIZE][8][8];
 
 static inline void interpolateLinear( float x, float* coeffs )
 {
@@ -286,6 +287,7 @@ static const void* initInterTab2D( int method, bool fixpt )
     return fixpt ? (const void*)itab : (const void*)tab;
 }
 
+#ifndef ESP_BUILD_FIX_SIZE
 #ifndef __MINGW32__
 static bool initAllInterTab2D()
 {
@@ -298,6 +300,7 @@ static bool initAllInterTab2D()
 }
 
 static volatile bool doInitAllInterTab2D = initAllInterTab2D();
+#endif
 #endif
 
 template<typename ST, typename DT> struct Cast
