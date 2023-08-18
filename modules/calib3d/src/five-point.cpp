@@ -50,12 +50,12 @@ public:
         Mat Q(n, 9, CV_32F);
         Q.col(0) = Q1.col(0).mul( Q2.col(0) );
         Q.col(1) = Q1.col(1).mul( Q2.col(0) );
-        Q.col(2) = Q2.col(0) * 1.0;
+        Q2.col(0).copyTo(Q.col(2));
         Q.col(3) = Q1.col(0).mul( Q2.col(1) );
         Q.col(4) = Q1.col(1).mul( Q2.col(1) );
-        Q.col(5) = Q2.col(1) * 1.0;
-        Q.col(6) = Q1.col(0) * 1.0;
-        Q.col(7) = Q1.col(1) * 1.0;
+        Q2.col(1).copyTo(Q.col(5));
+        Q1.col(0).copyTo(Q.col(6));
+        Q1.col(1).copyTo(Q.col(7));
         Q.col(8) = 1.0;
 
         Mat U, W, Vt;
@@ -63,7 +63,7 @@ public:
         SVD::compute(Q, W, U, Vt, SVD::MODIFY_A | SVD::FULL_UV);
             //int64_t end_kernel = getTickCount();
 
-        Mat EE = Mat(Vt.t()).colRange(5, 9) * 1.0;
+        Mat EE = Mat(Vt.t()).colRange(5, 9).clone();
         Mat A(10, 20, CV_32F);
         EE = EE.t();
             //int64_t start_get_coeff = getTickCount();
@@ -79,18 +79,18 @@ public:
             //int64_t time1 = getTickCount();
         for (int i = 0; i < 3; i++)
         {
-            Mat arow1 = A.row(i * 2 + 4) * 1.0;
-            Mat arow2 = A.row(i * 2 + 5) * 1.0;
+            Mat arow1 = A.row(i * 2 + 4).clone();
+            Mat arow2 = A.row(i * 2 + 5).clone();
             Mat row1(1, 13, CV_32F, Scalar(0.0));
             Mat row2(1, 13, CV_32F, Scalar(0.0));
 
-            row1.colRange(1, 4) = arow1.colRange(0, 3) * 1.0;
-            row1.colRange(5, 8) = arow1.colRange(3, 6) * 1.0;
-            row1.colRange(9, 13) = arow1.colRange(6, 10) * 1.0;
+            arow1.colRange(0, 3).copyTo(row1.colRange(1, 4));
+            arow1.colRange(3, 6).copyTo(row1.colRange(5, 8));
+            arow1.colRange(6, 10).copyTo(row1.colRange(9, 13));
 
-            row2.colRange(0, 3) = arow2.colRange(0, 3) * 1.0;
-            row2.colRange(4, 7) = arow2.colRange(3, 6) * 1.0;
-            row2.colRange(8, 12) = arow2.colRange(6, 10) * 1.0;
+            arow2.colRange(0, 3).copyTo(row2.colRange(0, 3));
+            arow2.colRange(3, 6).copyTo(row2.colRange(4, 7));
+            arow2.colRange(6, 10).copyTo(row2.colRange(8, 12));
 
             B.row(i) = row1 - row2;
         }
@@ -157,6 +157,18 @@ public:
             //int64_t end_for = getTickCount();
 
         ematrix.rowRange(0, count*3).copyTo(_model);
+
+            //printf("Time           %lld\n", (time2 - time1)/1000);
+            //printf("Time           %lld\n", (time3 - time2)/1000);
+            //printf("Time           %lld\n", (time4 - time3)/1000);
+            //printf("Time           %lld\n", (time5 - time4)/1000);
+            //printf("Time           %lld\n", (time6 - time5)/1000);
+            //printf("Time           %lld\n", (time7 - time6)/1000);
+            //printf("Time           %lld\n", (time8 - time7)/1000);
+            //printf("Time           %lld\n", (time9 - time8)/1000);
+            //printf("Time           %lld\n", (time10 - time9)/1000);
+            //printf("Time           %lld\n", (time11 - time10)/1000);
+            //printf("Time           %lld\n", (time12 - time11)/1000);
 
             //int64_t end_func = getTickCount();
 
@@ -392,7 +404,7 @@ protected:
         A[112]=e[19]*e[1]*e[4]+e[19]*e[0]*e[3]+e[19]*e[2]*e[5]+e[4]*e[21]*e[3]+e[4]*e[23]*e[5]+e[7]*e[21]*e[6]+e[7]*e[3]*e[24]+e[7]*e[4]*e[25]+e[7]*e[23]*e[8]+e[7]*e[5]*e[26]+e[25]*e[3]*e[6]+e[25]*e[5]*e[8]+e[1]*e[18]*e[3]+e[1]*e[0]*e[21]+e[1]*e[20]*e[5]+e[1]*e[2]*e[23]-1.*e[4]*e[26]*e[8]-1.*e[4]*e[20]*e[2]-1.*e[4]*e[18]*e[0]-1.*e[4]*e[24]*e[6]+1.500000000*e[22]*ep2[4]-.5000000000*e[22]*ep2[0]-.5000000000*e[22]*ep2[6]+.5000000000*e[22]*ep2[5]+.5000000000*e[22]*ep2[1]+.5000000000*e[22]*ep2[7]+.5000000000*e[22]*ep2[3]-.5000000000*e[22]*ep2[2]-.5000000000*e[22]*ep2[8];
         A[113]=-1.*e[31]*e[20]*e[2]-1.*e[31]*e[18]*e[0]+e[31]*e[23]*e[5]-1.*e[31]*e[24]*e[6]+e[7]*e[30]*e[24]+e[7]*e[21]*e[33]+e[7]*e[32]*e[26]+e[7]*e[23]*e[35]+e[25]*e[30]*e[6]+e[25]*e[3]*e[33]+e[25]*e[31]*e[7]+e[25]*e[4]*e[34]+e[25]*e[32]*e[8]+e[25]*e[5]*e[35]+e[34]*e[21]*e[6]+e[34]*e[3]*e[24]+e[34]*e[22]*e[7]+e[34]*e[23]*e[8]+e[34]*e[5]*e[26]+e[1]*e[27]*e[21]+e[1]*e[18]*e[30]+e[1]*e[28]*e[22]+e[1]*e[19]*e[31]+e[1]*e[29]*e[23]+e[1]*e[20]*e[32]+e[19]*e[27]*e[3]+e[19]*e[0]*e[30]+e[19]*e[28]*e[4]+e[19]*e[29]*e[5]+e[19]*e[2]*e[32]+e[28]*e[18]*e[3]+e[28]*e[0]*e[21]+e[28]*e[20]*e[5]+e[28]*e[2]*e[23]+e[4]*e[30]*e[21]+3.*e[4]*e[31]*e[22]+e[4]*e[32]*e[23]-1.*e[4]*e[27]*e[18]-1.*e[4]*e[33]*e[24]-1.*e[4]*e[29]*e[20]-1.*e[4]*e[35]*e[26]-1.*e[22]*e[27]*e[0]+e[22]*e[32]*e[5]-1.*e[22]*e[33]*e[6]+e[22]*e[30]*e[3]-1.*e[22]*e[35]*e[8]-1.*e[22]*e[29]*e[2]+e[31]*e[21]*e[3]-1.*e[31]*e[26]*e[8];
 
-        int perm[20] = {6, 8, 18, 15, 12, 5, 14, 7, 4, 11, 19, 13, 1, 16, 17, 3, 10, 9, 2, 0};
+        const int perm[20] = {6, 8, 18, 15, 12, 5, 14, 7, 4, 11, 19, 13, 1, 16, 17, 3, 10, 9, 2, 0};
         float AA[200];
         for (int i = 0; i < 20; i++)
         {
@@ -447,9 +459,9 @@ static Mat findEssentialMat_( InputArray _points1, InputArray _points2,
     Mat cm1 = cameraMatrix1.getMat(), cm2 = cameraMatrix2.getMat(), cm0;
     Mat(cm1 + cm2).convertTo(cm0, CV_32F, 0.5);
     CV_Assert(cm0.rows == 3 && cm0.cols == 3);
-    CV_Assert(std::abs(cm0.at<float>(2, 0)) < 1e-3 &&
-              std::abs(cm0.at<float>(2, 1)) < 1e-3 &&
-              std::abs(cm0.at<float>(2, 2) - 1.) < 1e-3);
+    CV_Assert(std::fabs(cm0.at<float>(2, 0)) < 1e-3 &&
+              std::fabs(cm0.at<float>(2, 1)) < 1e-3 &&
+              std::fabs(cm0.at<float>(2, 2) - 1.) < 1e-3);
     Mat affine = cm0.rowRange(0, 2);
 
     transform(_points1, _pointsTransformed1, affine);
@@ -631,10 +643,10 @@ int cv::recoverPose( InputArray E, InputArray _points1, InputArray _points2,
     decomposeEssentialMat(E, R1, R2, t);
     Mat P0 = Mat::eye(3, 4, R1.type());
     Mat P1(3, 4, R1.type()), P2(3, 4, R1.type()), P3(3, 4, R1.type()), P4(3, 4, R1.type());
-    P1(Range::all(), Range(0, 3)) = R1 * 1.0; P1.col(3) = t * 1.0;
-    P2(Range::all(), Range(0, 3)) = R2 * 1.0; P2.col(3) = t * 1.0;
-    P3(Range::all(), Range(0, 3)) = R1 * 1.0; P3.col(3) = -t * 1.0;
-    P4(Range::all(), Range(0, 3)) = R2 * 1.0; P4.col(3) = -t * 1.0;
+    R1.copyTo(P1(Range::all(), Range(0, 3))); t.copyTo(P1.col(3));
+    R2.copyTo(P2(Range::all(), Range(0, 3))); t.copyTo(P2.col(3));
+    R1.copyTo(P3(Range::all(), Range(0, 3))); P3.col(3) = -t * 1.0;
+    R2.copyTo(P4(Range::all(), Range(0, 3))); P4.col(3) = -t * 1.0;
 
     // Do the chirality check.
     // Notice here a threshold dist is used to filter
@@ -798,7 +810,7 @@ void cv::decomposeEssentialMat( InputArray _E, OutputArray _R1, OutputArray _R2,
     Mat R1, R2, t;
     R1 = U * W * Vt;
     R2 = U * W.t() * Vt;
-    t = U.col(2) * 1.0;
+    U.col(2).copyTo(t);
 
     R1.copyTo(_R1);
     R2.copyTo(_R2);
