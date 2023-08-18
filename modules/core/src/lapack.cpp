@@ -414,11 +414,11 @@ JacobiSVDImpl_(_Tp* At, size_t astep, _Tp* _W, _Tp* Vt, size_t vstep,
                int m, int n, int n1, double minval, _Tp eps)
 {
     VBLAS<_Tp> vblas;
-    AutoBuffer<double> Wbuf(n);
-    double* W = Wbuf.data();
+    AutoBuffer<float> Wbuf(n);
+    float* W = Wbuf.data();
     int i, j, k, iter, max_iter = std::max(m, 30);
     _Tp c, s;
-    double sd;
+    float sd;
     astep /= sizeof(At[0]);
     vstep /= sizeof(Vt[0]);
 
@@ -427,7 +427,7 @@ JacobiSVDImpl_(_Tp* At, size_t astep, _Tp* _W, _Tp* Vt, size_t vstep,
         for( k = 0, sd = 0; k < m; k++ )
         {
             _Tp t = At[i*astep + k];
-            sd += (double)t*t;
+            sd += (float)t*t;
         }
         W[i] = sd;
 
@@ -447,19 +447,19 @@ JacobiSVDImpl_(_Tp* At, size_t astep, _Tp* _W, _Tp* Vt, size_t vstep,
             for( j = i+1; j < n; j++ )
             {
                 _Tp *Ai = At + i*astep, *Aj = At + j*astep;
-                double a = W[i], p = 0, b = W[j];
+                float a = W[i], p = 0, b = W[j];
 
                 for( k = 0; k < m; k++ )
-                    p += (double)Ai[k]*Aj[k];
+                    p += (float)Ai[k]*Aj[k];
 
-                if( std::abs(p) <= eps*std::sqrt((double)a*b) )
+                if( std::fabs(p) <= eps*(float)std::sqrt(a*b) )
                     continue;
 
                 p *= 2;
-                double beta = a - b, gamma = hypot((double)p, beta);
+                float beta = a - b, gamma = hypot((float)p, beta);
                 if( beta < 0 )
                 {
-                    double delta = (gamma - beta)*0.5;
+                    float delta = (gamma - beta)*0.5;
                     s = (_Tp)std::sqrt(delta/gamma);
                     c = (_Tp)(p/(gamma*s*2));
                 }
@@ -476,7 +476,7 @@ JacobiSVDImpl_(_Tp* At, size_t astep, _Tp* _W, _Tp* Vt, size_t vstep,
                     _Tp t1 = -s*Ai[k] + c*Aj[k];
                     Ai[k] = t0; Aj[k] = t1;
 
-                    a += (double)t0*t0; b += (double)t1*t1;
+                    a += (float)t0*t0; b += (float)t1*t1;
                 }
                 W[i] = a; W[j] = b;
 
@@ -504,7 +504,7 @@ JacobiSVDImpl_(_Tp* At, size_t astep, _Tp* _W, _Tp* Vt, size_t vstep,
         for( k = 0, sd = 0; k < m; k++ )
         {
             _Tp t = At[i*astep + k];
-            sd += (double)t*t;
+            sd += (float)t*t;
         }
         W[i] = std::sqrt(sd);
     }
@@ -565,7 +565,7 @@ JacobiSVDImpl_(_Tp* At, size_t astep, _Tp* _W, _Tp* Vt, size_t vstep,
                     {
                         _Tp t = (_Tp)(At[i*astep + k] - sd*At[j*astep + k]);
                         At[i*astep + k] = t;
-                        asum += std::abs(t);
+                        asum += std::fabs(t);
                     }
                     asum = asum > eps*100 ? 1/asum : 0;
                     for( k = 0; k < m; k++ )
@@ -576,7 +576,7 @@ JacobiSVDImpl_(_Tp* At, size_t astep, _Tp* _W, _Tp* Vt, size_t vstep,
             for( k = 0; k < m; k++ )
             {
                 _Tp t = At[i*astep + k];
-                sd += (double)t*t;
+                sd += (float)t*t;
             }
             sd = std::sqrt(sd);
         }

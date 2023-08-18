@@ -1774,8 +1774,8 @@ int cv::solveCubic( InputArray _coeffs, OutputArray _roots )
     Mat roots = _roots.getMat();
 
     int i = -1, n = 0;
-    double a0 = 1., a1, a2, a3;
-    double x0 = 0., x1 = 0., x2 = 0.;
+    float a0 = 1., a1, a2, a3;
+    float x0 = 0., x1 = 0., x2 = 0.;
     int ncoeffs = coeffs.rows + coeffs.cols - 1;
 
     if( ctype == CV_32FC1 )
@@ -1790,11 +1790,11 @@ int cv::solveCubic( InputArray _coeffs, OutputArray _roots )
     else
     {
         if( ncoeffs == 4 )
-            a0 = coeffs.at<double>(++i);
+            a0 = coeffs.at<float>(++i);
 
-        a1 = coeffs.at<double>(i+1);
-        a2 = coeffs.at<double>(i+2);
-        a3 = coeffs.at<double>(i+3);
+        a1 = coeffs.at<float>(i+1);
+        a2 = coeffs.at<float>(i+2);
+        a3 = coeffs.at<float>(i+3);
     }
 
     if( a0 == 0 )
@@ -1813,12 +1813,12 @@ int cv::solveCubic( InputArray _coeffs, OutputArray _roots )
         else
         {
             // quadratic equation
-            double d = a2*a2 - 4*a1*a3;
+            float d = a2*a2 - 4*a1*a3;
             if( d >= 0 )
             {
                 d = std::sqrt(d);
-                double q1 = (-a2 + d) * 0.5;
-                double q2 = (a2 + d) * -0.5;
+                float q1 = (-a2 + d) * 0.5;
+                float q2 = (a2 + d) * -0.5;
                 if( fabs(q1) > fabs(q2) )
                 {
                     x0 = q1 / a1;
@@ -1840,34 +1840,34 @@ int cv::solveCubic( InputArray _coeffs, OutputArray _roots )
         a2 *= a0;
         a3 *= a0;
 
-        double Q = (a1 * a1 - 3 * a2) * (1./9);
-        double R = (2 * a1 * a1 * a1 - 9 * a1 * a2 + 27 * a3) * (1./54);
-        double Qcubed = Q * Q * Q;
-        double d = Qcubed - R * R;
+        float Q = (a1 * a1 - 3 * a2) * (1./9);
+        float R = (2 * a1 * a1 * a1 - 9 * a1 * a2 + 27 * a3) * (1./54);
+        float Qcubed = Q * Q * Q;
+        float d = Qcubed - R * R;
 
         if( d > 0 )
         {
-            double theta = acos(R / sqrt(Qcubed));
-            double sqrtQ = sqrt(Q);
-            double t0 = -2 * sqrtQ;
-            double t1 = theta * (1./3);
-            double t2 = a1 * (1./3);
-            x0 = t0 * cos(t1) - t2;
-            x1 = t0 * cos(t1 + (2.*CV_PI/3)) - t2;
-            x2 = t0 * cos(t1 + (4.*CV_PI/3)) - t2;
+            float theta = acosf(R / sqrtf(Qcubed));
+            float sqrtQ = sqrtf(Q);
+            float t0 = -2 * sqrtQ;
+            float t1 = theta * (1./3);
+            float t2 = a1 * (1./3);
+            x0 = t0 * cosf(t1) - t2;
+            x1 = t0 * cosf(t1 + (2.*CV_PI/3)) - t2;
+            x2 = t0 * cosf(t1 + (4.*CV_PI/3)) - t2;
             n = 3;
         }
         else if( d == 0 )
         {
             if(R >= 0)
             {
-                x0 = -2*pow(R, 1./3) - a1/3;
-                x1 = pow(R, 1./3) - a1/3;
+                x0 = -2*powf(R, 1./3) - a1/3;
+                x1 = powf(R, 1./3) - a1/3;
             }
             else
             {
-                x0 = 2*pow(-R, 1./3) - a1/3;
-                x1 = -pow(-R, 1./3) - a1/3;
+                x0 = 2*powf(-R, 1./3) - a1/3;
+                x1 = -powf(-R, 1./3) - a1/3;
             }
             x2 = 0;
             n = x0 == x1 ? 1 : 2;
@@ -1875,9 +1875,9 @@ int cv::solveCubic( InputArray _coeffs, OutputArray _roots )
         }
         else
         {
-            double e;
-            d = sqrt(-d);
-            e = pow(d + fabs(R), 1./3);
+            float e;
+            d = sqrtf(-d);
+            e = powf(d + fabs(R), 1./3);
             if( R > 0 )
                 e = -e;
             x0 = (e + Q / e) - a1 * (1./3);
@@ -1893,9 +1893,9 @@ int cv::solveCubic( InputArray _coeffs, OutputArray _roots )
     }
     else
     {
-        roots.at<double>(0) = x0;
-        roots.at<double>(1) = x1;
-        roots.at<double>(2) = x2;
+        roots.at<float>(0) = x0;
+        roots.at<float>(1) = x1;
+        roots.at<float>(2) = x2;
     }
 
     return n;
@@ -1907,9 +1907,9 @@ double cv::solvePoly( InputArray _coeffs0, OutputArray _roots0, int maxIters )
 {
     CV_INSTRUMENT_REGION();
 
-    typedef Complex<double> C;
+    typedef Complex<float> C;
 
-    double maxDiff = 0;
+    float maxDiff = 0;
     int iter, i, j;
     Mat coeffs0 = _coeffs0.getMat();
     int ctype = _coeffs0.type();
@@ -1925,18 +1925,18 @@ double cv::solvePoly( InputArray _coeffs0, OutputArray _roots0, int maxIters )
 
     AutoBuffer<C> buf(n*2+2);
     C *coeffs = buf.data(), *roots = coeffs + n + 1;
-    Mat coeffs1(coeffs0.size(), CV_MAKETYPE(CV_64F, coeffs0.channels()), coeffs0.channels() == 2 ? coeffs : roots);
+    Mat coeffs1(coeffs0.size(), CV_MAKETYPE(CV_32F, coeffs0.channels()), coeffs0.channels() == 2 ? coeffs : roots);
     coeffs0.convertTo(coeffs1, coeffs1.type());
     if( coeffs0.channels() == 1 )
     {
-        const double* rcoeffs = (const double*)roots;
+        const float* rcoeffs = (const float*)roots;
         for( i = 0; i <= n; i++ )
             coeffs[i] = C(rcoeffs[i], 0);
     }
 
     for( ; n > 1; n-- )
     {
-        if( std::abs(coeffs[n].re) + std::abs(coeffs[n].im) > DBL_EPSILON )
+        if( std::fabs(coeffs[n].re) + std::fabs(coeffs[n].im) > DBL_EPSILON )
             break;
     }
 
@@ -1971,40 +1971,40 @@ double cv::solvePoly( InputArray _coeffs0, OutputArray _roots0, int maxIters )
             num /= denom;
             if( num_same_root > 1)
             {
-                double old_num_re = num.re;
-                double old_num_im = num.im;
+                float old_num_re = num.re;
+                float old_num_im = num.im;
                 int square_root_times = num_same_root % 2 == 0 ? num_same_root / 2 : num_same_root / 2 - 1;
 
                 for( j = 0; j < square_root_times; j++)
                 {
                     num.re = old_num_re*old_num_re + old_num_im*old_num_im;
-                    num.re = sqrt(num.re);
+                    num.re = sqrtf(num.re);
                     num.re += old_num_re;
                     num.im = num.re - old_num_re;
                     num.re /= 2;
-                    num.re = sqrt(num.re);
+                    num.re = sqrtf(num.re);
 
                     num.im /= 2;
-                    num.im = sqrt(num.im);
+                    num.im = sqrtf(num.im);
                     if( old_num_re < 0 ) num.im = -num.im;
                 }
 
                 if( num_same_root % 2 != 0){
-                    Mat cube_coefs(4, 1, CV_64FC1);
-                    Mat cube_roots(3, 1, CV_64FC2);
-                    cube_coefs.at<double>(3) = -(pow(old_num_re, 3));
-                    cube_coefs.at<double>(2) = -(15*pow(old_num_re, 2) + 27*pow(old_num_im, 2));
-                    cube_coefs.at<double>(1) = -48*old_num_re;
-                    cube_coefs.at<double>(0) = 64;
+                    Mat cube_coefs(4, 1, CV_32FC1);
+                    Mat cube_roots(3, 1, CV_32FC2);
+                    cube_coefs.at<float>(3) = -(powf(old_num_re, 3));
+                    cube_coefs.at<float>(2) = -(15*powf(old_num_re, 2) + 27*powf(old_num_im, 2));
+                    cube_coefs.at<float>(1) = -48*old_num_re;
+                    cube_coefs.at<float>(0) = 64;
                     solveCubic(cube_coefs, cube_roots);
 
-                    if(cube_roots.at<double>(0) >= 0) num.re = pow(cube_roots.at<double>(0), 1./3);
-                    else num.re = -pow(-cube_roots.at<double>(0), 1./3);
-                    num.im = sqrt(pow(num.re, 2) / 3 - old_num_re / (3*num.re));
+                    if(cube_roots.at<float>(0) >= 0) num.re = powf(cube_roots.at<float>(0), 1./3);
+                    else num.re = -powf(-cube_roots.at<float>(0), 1./3);
+                    num.im = sqrtf(powf(num.re, 2) / 3 - old_num_re / (3*num.re));
                 }
             }
             roots[i] = p - num;
-            maxDiff = std::max(maxDiff, cv::abs(num));
+            maxDiff = std::fmax(maxDiff, cv::abs(num));
         }
         if( maxDiff <= 0 )
             break;
@@ -2012,7 +2012,7 @@ double cv::solvePoly( InputArray _coeffs0, OutputArray _roots0, int maxIters )
 
     if( coeffs0.channels() == 1 )
     {
-        const double verySmallEps = 1e-100;
+        const float verySmallEps = 1e-100;
         for( i = 0; i < n; i++ )
             if( fabs(roots[i].im) < verySmallEps )
                 roots[i].im = 0;
@@ -2021,8 +2021,8 @@ double cv::solvePoly( InputArray _coeffs0, OutputArray _roots0, int maxIters )
     for( ; n < n0; n++ )
         roots[n+1] = roots[n];
 
-    Mat(roots0.size(), CV_64FC2, roots).convertTo(roots0, roots0.type());
-    return maxDiff;
+    Mat(roots0.size(), CV_32FC2, roots).convertTo(roots0, roots0.type());
+    return (double)maxDiff;
 }
 
 
