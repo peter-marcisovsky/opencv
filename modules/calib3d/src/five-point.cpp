@@ -41,12 +41,13 @@ class EMEstimatorCallback CV_FINAL : public PointSetRegistrator::Callback
 public:
     int runKernel( InputArray _m1, InputArray _m2, OutputArray _model ) const CV_OVERRIDE
     {
+            //int64_t start_func = getTickCount();
         Mat q1 = _m1.getMat(), q2 = _m2.getMat();
         Mat Q1 = q1.reshape(1, (int)q1.total());
         Mat Q2 = q2.reshape(1, (int)q2.total());
 
         int n = Q1.rows;
-        Mat Q(n, 9, CV_64F);
+        Mat Q(n, 9, CV_32F);
         Q.col(0) = Q1.col(0).mul( Q2.col(0) );
         Q.col(1) = Q1.col(1).mul( Q2.col(0) );
         Q.col(2) = Q2.col(0) * 1.0;
@@ -58,24 +59,30 @@ public:
         Q.col(8) = 1.0;
 
         Mat U, W, Vt;
+            //int64_t start_kernel = getTickCount();
         SVD::compute(Q, W, U, Vt, SVD::MODIFY_A | SVD::FULL_UV);
+            //int64_t end_kernel = getTickCount();
 
         Mat EE = Mat(Vt.t()).colRange(5, 9) * 1.0;
-        Mat A(10, 20, CV_64F);
+        Mat A(10, 20, CV_32F);
         EE = EE.t();
-        getCoeffMat(EE.ptr<double>(), A.ptr<double>());
+            //int64_t start_get_coeff = getTickCount();
+        getCoeffMat(EE.ptr<float>(), A.ptr<float>());
+            //int64_t end_get_coeff = getTickCount();
+
         EE = EE.t();
 
         A = A.colRange(0, 10).inv() * A.colRange(10, 20);
 
-        double b[3 * 13];
-        Mat B(3, 13, CV_64F, b);
+        float b[3 * 13];
+        Mat B(3, 13, CV_32F, b);
+            //int64_t time1 = getTickCount();
         for (int i = 0; i < 3; i++)
         {
             Mat arow1 = A.row(i * 2 + 4) * 1.0;
             Mat arow2 = A.row(i * 2 + 5) * 1.0;
-            Mat row1(1, 13, CV_64F, Scalar(0.0));
-            Mat row2(1, 13, CV_64F, Scalar(0.0));
+            Mat row1(1, 13, CV_32F, Scalar(0.0));
+            Mat row2(1, 13, CV_32F, Scalar(0.0));
 
             row1.colRange(1, 4) = arow1.colRange(0, 3) * 1.0;
             row1.colRange(5, 8) = arow1.colRange(3, 6) * 1.0;
@@ -87,9 +94,10 @@ public:
 
             B.row(i) = row1 - row2;
         }
+            //int64_t time2 = getTickCount();
 
-        double c[11];
-        Mat coeffs(1, 11, CV_64F, c);
+        float c[11];
+        Mat coeffs(1, 11, CV_32F, c);
         c[10] = (b[0]*b[17]*b[34]+b[26]*b[4]*b[21]-b[26]*b[17]*b[8]-b[13]*b[4]*b[34]-b[0]*b[21]*b[30]+b[13]*b[30]*b[8]);
         c[9] = (b[26]*b[4]*b[22]+b[14]*b[30]*b[8]+b[13]*b[31]*b[8]+b[1]*b[17]*b[34]-b[13]*b[5]*b[34]+b[26]*b[5]*b[21]-b[0]*b[21]*b[31]-b[26]*b[17]*b[9]-b[1]*b[21]*b[30]+b[27]*b[4]*b[21]+b[0]*b[17]*b[35]-b[0]*b[22]*b[30]+b[13]*b[30]*b[9]+b[0]*b[18]*b[34]-b[27]*b[17]*b[8]-b[14]*b[4]*b[34]-b[13]*b[4]*b[35]-b[26]*b[18]*b[8]);
         c[8] = (b[14]*b[30]*b[9]+b[14]*b[31]*b[8]+b[13]*b[31]*b[9]-b[13]*b[4]*b[36]-b[13]*b[5]*b[35]+b[15]*b[30]*b[8]-b[13]*b[6]*b[34]+b[13]*b[30]*b[10]+b[13]*b[32]*b[8]-b[14]*b[4]*b[35]-b[14]*b[5]*b[34]+b[26]*b[4]*b[23]+b[26]*b[5]*b[22]+b[26]*b[6]*b[21]-b[26]*b[17]*b[10]-b[15]*b[4]*b[34]-b[26]*b[18]*b[9]-b[26]*b[19]*b[8]+b[27]*b[4]*b[22]+b[27]*b[5]*b[21]-b[27]*b[17]*b[9]-b[27]*b[18]*b[8]-b[1]*b[21]*b[31]-b[0]*b[23]*b[30]-b[0]*b[21]*b[32]+b[28]*b[4]*b[21]-b[28]*b[17]*b[8]+b[2]*b[17]*b[34]+b[0]*b[18]*b[35]-b[0]*b[22]*b[31]+b[0]*b[17]*b[36]+b[0]*b[19]*b[34]-b[1]*b[22]*b[30]+b[1]*b[18]*b[34]+b[1]*b[17]*b[35]-b[2]*b[21]*b[30]);
@@ -102,55 +110,81 @@ public:
         c[1] = (b[29]*b[7]*b[24]-b[29]*b[20]*b[11]+b[2]*b[20]*b[38]-b[2]*b[25]*b[33]-b[28]*b[20]*b[12]+b[28]*b[7]*b[25]-b[29]*b[19]*b[12]-b[3]*b[24]*b[33]+b[15]*b[33]*b[12]+b[3]*b[19]*b[38]-b[16]*b[6]*b[38]+b[3]*b[20]*b[37]+b[16]*b[32]*b[12]+b[29]*b[6]*b[25]-b[16]*b[7]*b[37]-b[3]*b[25]*b[32]-b[15]*b[7]*b[38]+b[16]*b[33]*b[11]);
         c[0] = -b[29]*b[20]*b[12]+b[29]*b[7]*b[25]+b[16]*b[33]*b[12]-b[16]*b[7]*b[38]+b[3]*b[20]*b[38]-b[3]*b[25]*b[33];
 
-        std::vector<Complex<double> > roots;
+        std::vector<Complex<float> > roots;
+            //int64_t time3 = getTickCount();
         solvePoly(coeffs, roots);
+            //int64_t time4 = getTickCount();
 
-        std::vector<double> xs, ys, zs;
+        std::vector<float> xs, ys, zs;
         int count = 0;
 
-        Mat ematrix(10*3, 3, CV_64F);
-        double* e = ematrix.ptr<double>();
+        Mat ematrix(10*3, 3, CV_32F);
+        float* e = ematrix.ptr<float>();
+
+            //int64_t start_for = getTickCount();
         for (size_t i = 0; i < roots.size(); i++)
         {
             if (fabs(roots[i].im) > 1e-10) continue;
-            double z1 = roots[i].re;
-            double z2 = z1 * z1;
-            double z3 = z2 * z1;
-            double z4 = z3 * z1;
+            float z1 = roots[i].re;
+            float z2 = z1 * z1;
+            float z3 = z2 * z1;
+            float z4 = z3 * z1;
 
-            double bz[3][3];
+            float bz[3][3];
             for (int j = 0; j < 3; j++)
             {
-                const double * br = b + j * 13;
+                const float * br = b + j * 13;
                 bz[j][0] = br[0] * z3 + br[1] * z2 + br[2] * z1 + br[3];
                 bz[j][1] = br[4] * z3 + br[5] * z2 + br[6] * z1 + br[7];
                 bz[j][2] = br[8] * z4 + br[9] * z3 + br[10] * z2 + br[11] * z1 + br[12];
             }
 
-            Mat Bz(3, 3, CV_64F, bz);
+            Mat Bz(3, 3, CV_32F, bz);
             cv::Mat xy1;
             SVD::solveZ(Bz, xy1);
 
-            if (fabs(xy1.at<double>(2)) < 1e-10) continue;
-            xs.push_back(xy1.at<double>(0) / xy1.at<double>(2));
-            ys.push_back(xy1.at<double>(1) / xy1.at<double>(2));
+            if (fabs(xy1.at<float>(2)) < 1e-10) continue;
+            xs.push_back(xy1.at<float>(0) / xy1.at<float>(2));
+            ys.push_back(xy1.at<float>(1) / xy1.at<float>(2));
             zs.push_back(z1);
 
             cv::Mat Evec = EE.col(0) * xs.back() + EE.col(1) * ys.back() + EE.col(2) * zs.back() + EE.col(3);
             Evec /= norm(Evec);
 
-            memcpy(e + count * 9, Evec.ptr(), 9 * sizeof(double));
+            memcpy(e + count * 9, Evec.ptr(), 9 * sizeof(float));
             count++;
         }
+            //int64_t end_for = getTickCount();
 
         ematrix.rowRange(0, count*3).copyTo(_model);
+
+            //int64_t end_func = getTickCount();
+
+            //printf("Kernel - SVD           %lld\n", (end_kernel - start_kernel)/1000);
+            //printf("Kernel - get coeff     %lld\n", (end_get_coeff - start_get_coeff)/1000);
+            //printf("Kernel - for           %lld\n", (end_for - start_for)/1000);
+            //printf("Kernel - Poly          %lld\n", (time4 - time3)/1000);
+            //printf("Kernel - func          %lld\n\n", (end_func - start_func)/1000);
+
+            //printf("%lld\n", start_func);
+            //printf("%lld\n", start_kernel);
+            //printf("%lld\n", end_kernel);
+            //printf("%lld\n", start_get_coeff);
+            //printf("%lld\n", end_get_coeff);
+            //printf("%lld\n", time1);
+            //printf("%lld\n", time2);
+            //printf("%lld\n", time3);
+            //printf("%lld\n", time4);
+            //printf("%lld\n", start_for);
+            //printf("%lld\n", end_for);
+            //printf("%lld\n\n", end_func);
         return count;
     }
 
 protected:
-    void getCoeffMat(double *e, double *A) const
+    void getCoeffMat(float *e, float *A) const
     {
-        double ep2[36], ep3[36];
+        float ep2[36], ep3[36];
         for (int i = 0; i < 36; i++)
         {
             ep2[i] = e[i] * e[i];
@@ -359,7 +393,7 @@ protected:
         A[113]=-1.*e[31]*e[20]*e[2]-1.*e[31]*e[18]*e[0]+e[31]*e[23]*e[5]-1.*e[31]*e[24]*e[6]+e[7]*e[30]*e[24]+e[7]*e[21]*e[33]+e[7]*e[32]*e[26]+e[7]*e[23]*e[35]+e[25]*e[30]*e[6]+e[25]*e[3]*e[33]+e[25]*e[31]*e[7]+e[25]*e[4]*e[34]+e[25]*e[32]*e[8]+e[25]*e[5]*e[35]+e[34]*e[21]*e[6]+e[34]*e[3]*e[24]+e[34]*e[22]*e[7]+e[34]*e[23]*e[8]+e[34]*e[5]*e[26]+e[1]*e[27]*e[21]+e[1]*e[18]*e[30]+e[1]*e[28]*e[22]+e[1]*e[19]*e[31]+e[1]*e[29]*e[23]+e[1]*e[20]*e[32]+e[19]*e[27]*e[3]+e[19]*e[0]*e[30]+e[19]*e[28]*e[4]+e[19]*e[29]*e[5]+e[19]*e[2]*e[32]+e[28]*e[18]*e[3]+e[28]*e[0]*e[21]+e[28]*e[20]*e[5]+e[28]*e[2]*e[23]+e[4]*e[30]*e[21]+3.*e[4]*e[31]*e[22]+e[4]*e[32]*e[23]-1.*e[4]*e[27]*e[18]-1.*e[4]*e[33]*e[24]-1.*e[4]*e[29]*e[20]-1.*e[4]*e[35]*e[26]-1.*e[22]*e[27]*e[0]+e[22]*e[32]*e[5]-1.*e[22]*e[33]*e[6]+e[22]*e[30]*e[3]-1.*e[22]*e[35]*e[8]-1.*e[22]*e[29]*e[2]+e[31]*e[21]*e[3]-1.*e[31]*e[26]*e[8];
 
         int perm[20] = {6, 8, 18, 15, 12, 5, 14, 7, 4, 11, 19, 13, 1, 16, 17, 3, 10, 9, 2, 0};
-        double AA[200];
+        float AA[200];
         for (int i = 0; i < 20; i++)
         {
             for (int j = 0; j < 10; j++) AA[i + j * 20] = A[perm[i] + j * 20];
@@ -375,26 +409,26 @@ protected:
     void computeError( InputArray _m1, InputArray _m2, InputArray _model, OutputArray _err ) const CV_OVERRIDE
     {
         Mat X1 = _m1.getMat(), X2 = _m2.getMat(), model = _model.getMat();
-        const Point2d* x1ptr = X1.ptr<Point2d>();
-        const Point2d* x2ptr = X2.ptr<Point2d>();
+        const Point2f* x1ptr = X1.ptr<Point2f>();
+        const Point2f* x2ptr = X2.ptr<Point2f>();
         int n = X1.checkVector(2);
-        Matx33d E(model.ptr<double>());
+        Matx33f E(model.ptr<float>());
 
         _err.create(n, 1, CV_32F);
         Mat err = _err.getMat();
 
         for (int i = 0; i < n; i++)
         {
-            Vec3d x1(x1ptr[i].x, x1ptr[i].y, 1.);
-            Vec3d x2(x2ptr[i].x, x2ptr[i].y, 1.);
-            Vec3d Ex1 = E * x1;
-            Vec3d Etx2 = E.t() * x2;
-            double x2tEx1 = x2.dot(Ex1);
+            Vec3f x1(x1ptr[i].x, x1ptr[i].y, 1.);
+            Vec3f x2(x2ptr[i].x, x2ptr[i].y, 1.);
+            Vec3f Ex1 = E * x1;
+            Vec3f Etx2 = E.t() * x2;
+            float x2tEx1 = x2.dot(Ex1);
 
-            double a = Ex1[0] * Ex1[0];
-            double b = Ex1[1] * Ex1[1];
-            double c = Etx2[0] * Etx2[0];
-            double d = Etx2[1] * Etx2[1];
+            float a = Ex1[0] * Ex1[0];
+            float b = Ex1[1] * Ex1[1];
+            float c = Etx2[0] * Etx2[0];
+            float d = Etx2[1] * Etx2[1];
 
             err.at<float>(i) = (float)(x2tEx1 * x2tEx1 / (a + b + c + d));
         }
@@ -411,11 +445,11 @@ static Mat findEssentialMat_( InputArray _points1, InputArray _points2,
     // and rescaled points have a similar value range to the original ones.
     Mat _pointsTransformed1, _pointsTransformed2;
     Mat cm1 = cameraMatrix1.getMat(), cm2 = cameraMatrix2.getMat(), cm0;
-    Mat(cm1 + cm2).convertTo(cm0, CV_64F, 0.5);
+    Mat(cm1 + cm2).convertTo(cm0, CV_32F, 0.5);
     CV_Assert(cm0.rows == 3 && cm0.cols == 3);
-    CV_Assert(std::abs(cm0.at<double>(2, 0)) < 1e-3 &&
-              std::abs(cm0.at<double>(2, 1)) < 1e-3 &&
-              std::abs(cm0.at<double>(2, 2) - 1.) < 1e-3);
+    CV_Assert(std::abs(cm0.at<float>(2, 0)) < 1e-3 &&
+              std::abs(cm0.at<float>(2, 1)) < 1e-3 &&
+              std::abs(cm0.at<float>(2, 2) - 1.) < 1e-3);
     Mat affine = cm0.rowRange(0, 2);
 
     transform(_points1, _pointsTransformed1, affine);
@@ -428,7 +462,7 @@ static Mat findEssentialMat_( InputArray _points1, InputArray _points2,
 
 // Input should be a vector of n 2D points or a Nx2 matrix
 cv::Mat cv::findEssentialMat( InputArray _points1, InputArray _points2, InputArray _cameraMatrix,
-                              int method, double prob, double threshold,
+                              int method, float prob, float threshold,
                               int maxIters, OutputArray _mask)
 {
     CV_INSTRUMENT_REGION();
@@ -438,9 +472,9 @@ cv::Mat cv::findEssentialMat( InputArray _points1, InputArray _points2, InputArr
             method, prob, threshold, _mask);
 
     Mat points1, points2, cameraMatrix;
-    _points1.getMat().convertTo(points1, CV_64F);
-    _points2.getMat().convertTo(points2, CV_64F);
-    _cameraMatrix.getMat().convertTo(cameraMatrix, CV_64F);
+    _points1.getMat().convertTo(points1, CV_32F);
+    _points2.getMat().convertTo(points2, CV_32F);
+    _cameraMatrix.getMat().convertTo(cameraMatrix, CV_32F);
 
     int npoints = points1.checkVector(2);
     CV_Assert( npoints >= 0 && points2.checkVector(2) == npoints &&
@@ -454,10 +488,10 @@ cv::Mat cv::findEssentialMat( InputArray _points1, InputArray _points2, InputArr
         points2 = points2.reshape(1, npoints);
     }
 
-    double fx = cameraMatrix.at<double>(0,0);
-    double fy = cameraMatrix.at<double>(1,1);
-    double cx = cameraMatrix.at<double>(0,2);
-    double cy = cameraMatrix.at<double>(1,2);
+    float fx = cameraMatrix.at<float>(0,0);
+    float fy = cameraMatrix.at<float>(1,1);
+    float cx = cameraMatrix.at<float>(0,2);
+    float cy = cameraMatrix.at<float>(1,2);
 
     points1.col(0) = (points1.col(0) - cx) / fx;
     points2.col(0) = (points2.col(0) - cx) / fx;
@@ -553,19 +587,19 @@ int cv::recoverPose( InputArray _points1, InputArray _points2,
     E.create(3, 3, _E.type());
     _E.copyTo(E);
 
-    return recoverPose(_E, _pointsUndistorted1, _pointsUndistorted2, Mat::eye(3,3, CV_64F), R, t, _mask);
+    return recoverPose(_E, _pointsUndistorted1, _pointsUndistorted2, Mat::eye(3,3, CV_32F), R, t, _mask);
 }
 
 int cv::recoverPose( InputArray E, InputArray _points1, InputArray _points2,
-                            InputArray _cameraMatrix, OutputArray _R, OutputArray _t, double distanceThresh,
+                            InputArray _cameraMatrix, OutputArray _R, OutputArray _t, float distanceThresh,
                      InputOutputArray _mask, OutputArray triangulatedPoints)
 {
     CV_INSTRUMENT_REGION();
 
     Mat points1, points2, cameraMatrix;
-    _points1.getMat().convertTo(points1, CV_64F);
-    _points2.getMat().convertTo(points2, CV_64F);
-    _cameraMatrix.getMat().convertTo(cameraMatrix, CV_64F);
+    _points1.getMat().convertTo(points1, CV_32F);
+    _points2.getMat().convertTo(points2, CV_32F);
+    _cameraMatrix.getMat().convertTo(cameraMatrix, CV_32F);
 
     int npoints = points1.checkVector(2);
     CV_Assert( npoints >= 0 && points2.checkVector(2) == npoints &&
@@ -579,10 +613,10 @@ int cv::recoverPose( InputArray E, InputArray _points1, InputArray _points2,
         points2 = points2.reshape(1, npoints);
     }
 
-    double fx = cameraMatrix.at<double>(0,0);
-    double fy = cameraMatrix.at<double>(1,1);
-    double cx = cameraMatrix.at<double>(0,2);
-    double cy = cameraMatrix.at<double>(1,2);
+    float fx = cameraMatrix.at<float>(0,0);
+    float fy = cameraMatrix.at<float>(1,1);
+    float cx = cameraMatrix.at<float>(0,2);
+    float cy = cameraMatrix.at<float>(1,2);
 
     points1.col(0) = (points1.col(0) - cx) / fx;
     points2.col(0) = (points2.col(0) - cx) / fx;
@@ -593,6 +627,7 @@ int cv::recoverPose( InputArray E, InputArray _points1, InputArray _points2,
     points2 = points2.t();
 
     Mat R1, R2, t;
+    //saveTime(getTickCount(), "decompose Begin");
     decomposeEssentialMat(E, R1, R2, t);
     Mat P0 = Mat::eye(3, 4, R1.type());
     Mat P1(3, 4, R1.type()), P2(3, 4, R1.type()), P3(3, 4, R1.type()), P4(3, 4, R1.type());
@@ -608,7 +643,9 @@ int cv::recoverPose( InputArray E, InputArray _points1, InputArray _points2,
     std::vector<Mat> allTriangulations(4);
     Mat Q;
 
-    triangulatePoints(P0, P1, points1, points2, Q);
+    //saveTime(getTickCount(), "triangulate1 begin"); 
+    triangulatePoints(P0, P1, points1, points2, Q);     // 36000 - 40000
+    //saveTime(getTickCount(), "triangulate1 end");
     if(triangulatedPoints.needed())
         Q.copyTo(allTriangulations[0]);
     Mat mask1 = Q.row(2).mul(Q.row(3)) > 0;
@@ -621,6 +658,7 @@ int cv::recoverPose( InputArray E, InputArray _points1, InputArray _points2,
     mask1 = (Q.row(2) > 0) & mask1;
     mask1 = (Q.row(2) < distanceThresh) & mask1;
 
+    //saveTime(getTickCount(), "triangulate2");
     triangulatePoints(P0, P2, points1, points2, Q);
     if(triangulatedPoints.needed())
         Q.copyTo(allTriangulations[1]);
@@ -634,6 +672,7 @@ int cv::recoverPose( InputArray E, InputArray _points1, InputArray _points2,
     mask2 = (Q.row(2) > 0) & mask2;
     mask2 = (Q.row(2) < distanceThresh) & mask2;
 
+    //saveTime(getTickCount(), "triangulate3");
     triangulatePoints(P0, P3, points1, points2, Q);
     if(triangulatedPoints.needed())
         Q.copyTo(allTriangulations[2]);
@@ -647,6 +686,7 @@ int cv::recoverPose( InputArray E, InputArray _points1, InputArray _points2,
     mask3 = (Q.row(2) > 0) & mask3;
     mask3 = (Q.row(2) < distanceThresh) & mask3;
 
+    //saveTime(getTickCount(), "triangulate4");
     triangulatePoints(P0, P4, points1, points2, Q);
     if(triangulatedPoints.needed())
         Q.copyTo(allTriangulations[3]);
@@ -752,7 +792,7 @@ void cv::decomposeEssentialMat( InputArray _E, OutputArray _R1, OutputArray _R2,
     if (determinant(U) < 0) U *= -1.;
     if (determinant(Vt) < 0) Vt *= -1.;
 
-    Mat W = (Mat_<double>(3, 3) << 0, 1, 0, -1, 0, 0, 0, 0, 1);
+    Mat W = (Mat_<float>(3, 3) << 0, 1, 0, -1, 0, 0, 0, 0, 1);
     W.convertTo(W, E.type());
 
     Mat R1, R2, t;

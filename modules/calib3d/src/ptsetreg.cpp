@@ -52,7 +52,7 @@
 namespace cv
 {
 
-int RANSACUpdateNumIters( double p, double ep, int modelPoints, int maxIters )
+int RANSACUpdateNumIters( float p, float ep, int modelPoints, int maxIters )
 {
     if( modelPoints <= 0 )
         CV_Error( Error::StsOutOfRange, "the number of model points should be positive" );
@@ -63,9 +63,9 @@ int RANSACUpdateNumIters( double p, double ep, int modelPoints, int maxIters )
     ep = MIN(ep, 1.);
 
     // avoid inf's & nan's
-    double num = MAX(1. - p, DBL_MIN);
-    double denom = 1. - std::pow(1. - ep, modelPoints);
-    if( denom < DBL_MIN )
+    float num = MAX(1. - p, FLT_MIN);
+    float denom = 1. - std::pow(1. - ep, modelPoints);
+    if( denom < FLT_MIN )
         return 0;
 
     num = std::log(num);
@@ -79,10 +79,10 @@ class RANSACPointSetRegistrator : public PointSetRegistrator
 {
 public:
     RANSACPointSetRegistrator(const Ptr<PointSetRegistrator::Callback>& _cb=Ptr<PointSetRegistrator::Callback>(),
-                              int _modelPoints=0, double _threshold=0, double _confidence=0.99, int _maxIters=1000)
+                              int _modelPoints=0, float _threshold=0, float _confidence=0.99, int _maxIters=1000)
       : cb(_cb), modelPoints(_modelPoints), threshold(_threshold), confidence(_confidence), maxIters(_maxIters) {}
 
-    int findInliers( const Mat& m1, const Mat& m2, const Mat& model, Mat& err, Mat& mask, double thresh ) const
+    int findInliers( const Mat& m1, const Mat& m2, const Mat& model, Mat& err, Mat& mask, float thresh ) const
     {
         cb->computeError( m1, m2, model, err );
         mask.create(err.size(), CV_8U);
@@ -200,8 +200,10 @@ public:
             return true;
         }
 
+        int64_t start_for = getTickCount();
         for( iter = 0; iter < niters; iter++ )
         {
+            int64_t start_for_in = getTickCount();
             int i, nmodels;
             if( count > modelPoints )
             {
@@ -214,16 +216,20 @@ public:
                 }
             }
 
+            int64_t start_kernel = getTickCount();
             nmodels = cb->runKernel( ms1, ms2, model );
+            int64_t end_kernel = getTickCount();
             if( nmodels <= 0 )
                 continue;
             CV_Assert( model.rows % nmodels == 0 );
             Size modelSize(model.cols, model.rows/nmodels);
 
+            int64_t start_second_for = getTickCount();
             for( i = 0; i < nmodels; i++ )
             {
                 Mat model_i = model.rowRange( i*modelSize.height, (i+1)*modelSize.height );
                 int goodCount = findInliers( m1, m2, model_i, err, mask, threshold );
+                //int64_t end_inliners = getTickCount();
 
                 if( goodCount > MAX(maxGoodCount, modelPoints-1) )
                 {
@@ -233,7 +239,11 @@ public:
                     niters = RANSACUpdateNumIters( confidence, (double)(count - goodCount)/count, modelPoints, niters );
                 }
             }
+            //int64_t end_for_in = getTickCount();
+            //printf("%lld   %lld   %lld\n", (end_for_in - start_for_in)/1000, (end_kernel - start_kernel)/1000, (end_for_in - start_second_for)/1000);
         }
+        //int64_t end_for = getTickCount();
+        //printf("%lld\n", (end_for - start_for)/1000);
 
         if( maxGoodCount > 0 )
         {
@@ -257,8 +267,8 @@ public:
 
     Ptr<PointSetRegistrator::Callback> cb;
     int modelPoints;
-    double threshold;
-    double confidence;
+    float threshold;
+    float confidence;
     int maxIters;
 };
 
@@ -375,8 +385,8 @@ public:
 };
 
 Ptr<PointSetRegistrator> createRANSACPointSetRegistrator(const Ptr<PointSetRegistrator::Callback>& _cb,
-                                                         int _modelPoints, double _threshold,
-                                                         double _confidence, int _maxIters)
+                                                         int _modelPoints, float _threshold,
+                                                         float _confidence, int _maxIters)
 {
     return Ptr<PointSetRegistrator>(
         new RANSACPointSetRegistrator(_cb, _modelPoints, _threshold, _confidence, _maxIters));
@@ -384,7 +394,7 @@ Ptr<PointSetRegistrator> createRANSACPointSetRegistrator(const Ptr<PointSetRegis
 
 
 Ptr<PointSetRegistrator> createLMeDSPointSetRegistrator(const Ptr<PointSetRegistrator::Callback>& _cb,
-                             int _modelPoints, double _confidence, int _maxIters)
+                             int _modelPoints, float _confidence, int _maxIters)
 {
     return Ptr<PointSetRegistrator>(
         new LMeDSPointSetRegistrator(_cb, _modelPoints, _confidence, _maxIters));

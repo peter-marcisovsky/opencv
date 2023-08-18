@@ -74,7 +74,7 @@ namespace cv
  *
  * If the computed number of iterations is larger than maxIters, then maxIters is returned.
  */
-int RANSACUpdateNumIters( double p, double ep, int modelPoints, int maxIters );
+int RANSACUpdateNumIters( float p, float ep, int modelPoints, int maxIters );
 
 class CV_EXPORTS PointSetRegistrator : public Algorithm
 {
@@ -93,11 +93,11 @@ public:
 };
 
 CV_EXPORTS Ptr<PointSetRegistrator> createRANSACPointSetRegistrator(const Ptr<PointSetRegistrator::Callback>& cb,
-                                                                    int modelPoints, double threshold,
-                                                                    double confidence=0.99, int maxIters=1000 );
+                                                                    int modelPoints, float threshold,
+                                                                    float confidence=0.99, int maxIters=1000 );
 
 CV_EXPORTS Ptr<PointSetRegistrator> createLMeDSPointSetRegistrator(const Ptr<PointSetRegistrator::Callback>& cb,
-                                                                   int modelPoints, double confidence=0.99, int maxIters=1000 );
+                                                                   int modelPoints, float confidence=0.99, int maxIters=1000 );
 
 template<typename T> inline int compressElems( T* ptr, const uchar* mask, int mstep, int count )
 {
