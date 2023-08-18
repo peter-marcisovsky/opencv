@@ -599,7 +599,9 @@ can be found in:
  */
 CV_EXPORTS_W void Rodrigues( InputArray src, OutputArray dst, OutputArray jacobian = noArray() );
 
-
+CV_EXPORTS_W void saveTime(int64_t time, const char *tag);
+CV_EXPORTS_W void printTimes();
+CV_EXPORTS_W void clearTimes();
 
 /** Levenberg-Marquardt solver. Starting with the specified vector of parameters it
     optimizes the target vector criteria "err"
@@ -2515,7 +2517,7 @@ CV_EXPORTS_W
 Mat findEssentialMat(
     InputArray points1, InputArray points2,
     InputArray cameraMatrix, int method = RANSAC,
-    double prob = 0.999, double threshold = 1.0,
+    float prob = 0.999, float threshold = 1.0,
     int maxIters = 1000, OutputArray mask = noArray()
 );
 
@@ -2837,7 +2839,7 @@ This function differs from the one above that it outputs the triangulated 3D poi
 the chirality check.
  */
 CV_EXPORTS_W int recoverPose( InputArray E, InputArray points1, InputArray points2,
-                            InputArray cameraMatrix, OutputArray R, OutputArray t, double distanceThresh, InputOutputArray mask = noArray(),
+                            InputArray cameraMatrix, OutputArray R, OutputArray t, float distanceThresh, InputOutputArray mask = noArray(),
                             OutputArray triangulatedPoints = noArray());
 
 /** @brief For points in an image of a stereo pair, computes the corresponding epilines in the other image.
