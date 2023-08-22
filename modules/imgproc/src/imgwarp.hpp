@@ -54,6 +54,14 @@
 
 namespace cv
 {
+
+bool initAllInterTab2D(void);
+const void* initInterTab2D( int method, bool fixpt );
+const uchar (* get_NNDeltaTab_i(void))[INTER_TAB_SIZE2][2];
+
+#if CV_SIMD128
+const short* get_BilinearTab_iC4(void);
+#endif
 namespace opt_AVX2
 {
 #if CV_TRY_AVX2
