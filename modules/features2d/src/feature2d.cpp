@@ -67,7 +67,10 @@ void Feature2D::detect( InputArray image,
         keypoints.clear();
         return;
     }
+    int64_t detect_start = cv::getTickCount();
     detectAndCompute(image, mask, keypoints, noArray(), false);
+    int64_t detect_end = cv::getTickCount();
+    printf("orb Detect = %lld\n", (detect_end - detect_start)/1000);
 }
 
 
@@ -122,7 +125,10 @@ void Feature2D::compute( InputArray image,
         descriptors.release();
         return;
     }
+    int64_t compute_start = cv::getTickCount();
     detectAndCompute(image, noArray(), keypoints, descriptors, true);
+    int64_t compute_end = cv::getTickCount();
+    printf("orb Compute = %lld\n\n", (compute_end - compute_start)/1000);
 }
 
 void Feature2D::compute( InputArrayOfArrays images,

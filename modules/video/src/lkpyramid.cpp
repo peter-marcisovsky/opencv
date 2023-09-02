@@ -182,6 +182,7 @@ typedef float itemtype;
 
 void cv::detail::LKTrackerInvoker::operator()(const Range& range) const
 {
+    //int64_t func_start = cv::getTickCount();
     CV_INSTRUMENT_REGION();
 
     Point2f halfWin((winSize.width-1)*0.5f, (winSize.height-1)*0.5f);
@@ -196,6 +197,7 @@ void cv::detail::LKTrackerInvoker::operator()(const Range& range) const
     Mat IWinBuf(winSize, CV_MAKETYPE(derivDepth, cn), _buf.data());
     Mat derivIWinBuf(winSize, CV_MAKETYPE(derivDepth, cn2), _buf.data() + winSize.area()*cn);
 
+    //int64_t outer_for_start = cv::getTickCount();
     for( int ptidx = range.start; ptidx < range.end; ptidx++ )
     {
         Point2f prevPt = prevPts[ptidx]*(float)(1./(1 << level));
@@ -269,6 +271,7 @@ void cv::detail::LKTrackerInvoker::operator()(const Range& range) const
 
         // extract the patch from the first image, compute covariation matrix of derivatives
         int x, y;
+        //int64_t height_for_start = cv::getTickCount();
         for( y = 0; y < winSize.height; y++ )
         {
             const uchar* src = I.ptr() + (y + iprevPt.y)*stepI + iprevPt.x*cn;
@@ -280,6 +283,8 @@ void cv::detail::LKTrackerInvoker::operator()(const Range& range) const
             x = 0;
 
 #if CV_SIMD128 && !CV_NEON
+
+            //int64_t width_for_start = cv::getTickCount();
             for( ; x <= winSize.width*cn - 8; x += 8, dsrc += 8*2, dIptr += 8*2 )
             {
                 v_int32x4 t0, t1;
@@ -349,6 +354,9 @@ void cv::detail::LKTrackerInvoker::operator()(const Range& range) const
                 qA12 = v_muladd(fx, fy, qA12);
                 qA11 = v_muladd(fx, fx, qA11);
             }
+            //int64_t width_for_end = cv::getTickCount();
+            //printf("klpyramid width for = %lld\n", (width_for_end - width_for_start)/1000);
+
 #endif
 
 #if CV_NEON
@@ -453,6 +461,8 @@ void cv::detail::LKTrackerInvoker::operator()(const Range& range) const
                 iA22 += (itemtype)(iyval*iyval);
             }
         }
+        //int64_t height_for_end = cv::getTickCount();
+        //printf("klpyramid height for = %lld\n", (height_for_end - height_for_start)/1000);
 
 #if CV_SIMD128 && !CV_NEON
         iA11 += v_reduce_sum(qA11);
@@ -488,6 +498,9 @@ void cv::detail::LKTrackerInvoker::operator()(const Range& range) const
 
         nextPt -= halfWin;
         Point2f prevDelta;
+
+        //int64_t criteria_for_start = cv::getTickCount();
+        //printf("klpyramid Height for end to criteria for = %lld\n", (criteria_for_start - height_for_end)/1000);
 
         for( j = 0; j < criteria.maxCount; j++ )
         {
@@ -526,6 +539,7 @@ void cv::detail::LKTrackerInvoker::operator()(const Range& range) const
 
 #endif
 
+            //int64_t win_height1_start = cv::getTickCount();
             for( y = 0; y < winSize.height; y++ )
             {
                 const uchar* Jptr = J.ptr() + (y + inextPt.y)*stepJ + inextPt.x*cn;
@@ -644,6 +658,8 @@ void cv::detail::LKTrackerInvoker::operator()(const Range& range) const
                     ib2 += (itemtype)(diff*dIptr[1]);
                 }
             }
+            // int64_t win_height1_end = cv::getTickCount();
+            //printf("klpyramid win height 1 for = %lld\n", (win_height1_end - win_height1_start)/1000);
 
 #if CV_SIMD128 && !CV_NEON
             v_float32x4 qf0, qf1;
@@ -679,6 +695,8 @@ void cv::detail::LKTrackerInvoker::operator()(const Range& range) const
             }
             prevDelta = delta;
         }
+        //int64_t criteria_for_end = cv::getTickCount();
+        //printf("klpyramid crieteria for = %lld\n", (criteria_for_end - criteria_for_start)/1000);
 
         CV_Assert(status != NULL);
         if( status[ptidx] && err && level == 0 && (flags & OPTFLOW_LK_GET_MIN_EIGENVALS) == 0 )
@@ -721,6 +739,9 @@ void cv::detail::LKTrackerInvoker::operator()(const Range& range) const
             err[ptidx] = errval * 1.f/(32*winSize.width*cn*winSize.height);
         }
     }
+    //int64_t outer_for_end = cv::getTickCount();
+    //printf("klpyramid outer for = %lld\n", (outer_for_end - outer_for_start)/1000);
+
 }
 
 int cv::buildOpticalFlowPyramid(InputArray _img, OutputArrayOfArrays pyramid, Size winSize, int maxLevel, bool withDerivatives,
@@ -1240,6 +1261,7 @@ void SparsePyrLKOpticalFlowImpl::calc( InputArray _prevImg, InputArray _nextImg,
                            InputArray _prevPts, InputOutputArray _nextPts,
                            OutputArray _status, OutputArray _err)
 {
+    int64_t func_start = cv::getTickCount();
     CV_INSTRUMENT_REGION();
 
     CV_OCL_RUN(ocl::isOpenCLActivated() &&
@@ -1267,6 +1289,8 @@ void SparsePyrLKOpticalFlowImpl::calc( InputArray _prevImg, InputArray _nextImg,
         return;
     }
 
+    int64_t time1 = cv::getTickCount();
+
     if( !(flags & OPTFLOW_USE_INITIAL_FLOW) )
         _nextPts.create(prevPtsMat.size(), prevPtsMat.type(), -1, true);
 
@@ -1293,6 +1317,8 @@ void SparsePyrLKOpticalFlowImpl::calc( InputArray _prevImg, InputArray _nextImg,
         err = errMat.ptr<float>();
     }
 
+    int64_t time2 = cv::getTickCount();
+    
     std::vector<Mat> prevPyr, nextPyr;
     int levels1 = -1;
     int lvlStep1 = 1;
@@ -1355,6 +1381,8 @@ void SparsePyrLKOpticalFlowImpl::calc( InputArray _prevImg, InputArray _nextImg,
             maxLevel = levels2;
     }
 
+    int64_t time3 = cv::getTickCount();
+
     if (levels1 < 0)
         maxLevel = buildOpticalFlowPyramid(_prevImg, prevPyr, winSize, maxLevel, false);
 
@@ -1376,8 +1404,12 @@ void SparsePyrLKOpticalFlowImpl::calc( InputArray _prevImg, InputArray _nextImg,
     if(lvlStep1 == 1)
         derivIBuf.create(prevPyr[0].rows + winSize.height*2, prevPyr[0].cols + winSize.width*2, CV_MAKETYPE(derivDepth, prevPyr[0].channels() * 2));
 
+    int64_t time4 = cv::getTickCount();
+
     for( level = maxLevel; level >= 0; level-- )
     {
+        int64_t for1 = 0, for2 = 0, for3 = 0;
+        int64_t for_start = cv::getTickCount();
         Mat derivI;
         if(lvlStep1 == 1)
         {
@@ -1385,22 +1417,54 @@ void SparsePyrLKOpticalFlowImpl::calc( InputArray _prevImg, InputArray _nextImg,
             Mat _derivI( imgSize.height + winSize.height*2,
                 imgSize.width + winSize.width*2, derivIBuf.type(), derivIBuf.ptr() );
             derivI = _derivI(Rect(winSize.width, winSize.height, imgSize.width, imgSize.height));
+            for1 = cv::getTickCount();
             calcScharrDeriv(prevPyr[level * lvlStep1], derivI);
+            for2 = cv::getTickCount();
             copyMakeBorder(derivI, _derivI, winSize.height, winSize.height, winSize.width, winSize.width, BORDER_CONSTANT|BORDER_ISOLATED);
+            for3 = cv::getTickCount();
         }
         else
             derivI = prevPyr[level * lvlStep1 + 1];
 
+        int64_t for4 = cv::getTickCount();
         CV_Assert(prevPyr[level * lvlStep1].size() == nextPyr[level * lvlStep2].size());
         CV_Assert(prevPyr[level * lvlStep1].type() == nextPyr[level * lvlStep2].type());
 
-        typedef cv::detail::LKTrackerInvoker LKTrackerInvoker;
-        parallel_for_(Range(0, npoints), LKTrackerInvoker(prevPyr[level * lvlStep1], derivI,
-                                                          nextPyr[level * lvlStep2], prevPts, nextPts,
-                                                          status, err,
-                                                          winSize, criteria, level, maxLevel,
-                                                          flags, (float)minEigThreshold));
+    for (int j = 0; j < npoints; j++) {
+        cv::detail::LKTrackerInvoker lkInvoker(prevPyr[level * lvlStep1], derivI,
+                                                nextPyr[level * lvlStep2], prevPts, nextPts,
+                                                status, err,
+                                                winSize, criteria, level, maxLevel,
+                                                flags, (float)minEigThreshold);
+
+        cv::Range rowRange(j, j + 1);  // Process a single point
+        lkInvoker(rowRange);           // Call the operator for this point
     }
+
+        //typedef cv::detail::LKTrackerInvoker LKTrackerInvoker;
+        //parallel_for_(Range(0, npoints), LKTrackerInvoker(prevPyr[level * lvlStep1], derivI,
+        //                                                  nextPyr[level * lvlStep2], prevPts, nextPts,
+        //                                                  status, err,
+        //                                                  winSize, criteria, level, maxLevel,
+        //                                                  flags, (float)minEigThreshold));
+
+        int64_t for_end = cv::getTickCount();
+        printf("lk Time for  = %lld\n", (for_end - for_start)/1000);
+        printf("lk For time1 = %lld\n", (for1 - for_start)/1000);
+        printf("lk For time2 = %lld\n", (for2 - for1)/1000);
+        printf("lk For time3 = %lld\n", (for3 - for2)/1000);
+        printf("lk For time4 = %lld\n", (for4 - for3)/1000);
+        printf("lk For time5 = %lld\n", (for_end - for4)/1000);
+    }
+
+    int64_t func_end = cv::getTickCount();
+
+    printf("lk main Time func = %lld\n", (func_end - func_start)/1000);
+    printf("lk main Time1     = %lld\n", (time1 - func_start)/1000);
+    printf("lk main Time2     = %lld\n", (time2 - time1)/1000);
+    printf("lk main Time3     = %lld\n", (time3 - time2)/1000);
+    printf("lk main Time4     = %lld\n", (time4 - time3)/1000);
+    printf("lk main Time5     = %lld\n\n", (func_end - time4)/1000);
 }
 
 } // namespace
