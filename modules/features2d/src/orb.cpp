@@ -42,10 +42,6 @@
 #define CV_IMPL_ADD(x)
 #endif
 
-#define sqrt_2              1.414213562f
-#define sqrt_2_div_2        0.707106781f
-#define sqrt_2_div_2_add_1  1.707106781f
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 namespace cv
@@ -381,8 +377,6 @@ static void initializeOrbPattern( const Point* pattern0, std::vector<Point>& pat
     }
 }
 
-// static int               orb.cpp.obj       4096       4           0           0           0         4100       18550      2869
-// static const int16_t     orb.cpp.obj          0       4           0           0           0            4       18548      7169          0       25717
 static int bit_pattern_31_[256*4] =
 {
     8,-3, 9,5/*mean (0), correlation (0)*/,
@@ -977,7 +971,6 @@ void ORB_Impl::detectAndCompute( InputArray _image, InputArray _mask,
                                  std::vector<KeyPoint>& keypoints,
                                  OutputArray _descriptors, bool useProvidedKeypoints )
 {
-    int64_t detect_compute_start = cv::getTickCount();
     CV_INSTRUMENT_REGION();
 
     CV_Assert(patchSize >= 2);
@@ -1007,7 +1000,6 @@ void ORB_Impl::detectAndCompute( InputArray _image, InputArray _mask,
 
     int i, level, nLevels = this->nlevels, nkeypoints = (int)keypoints.size();
     bool sortedByLevel = true;
-    int64_t time1 = cv::getTickCount();
 
     if( !do_keypoints )
     {
@@ -1045,7 +1037,6 @@ void ORB_Impl::detectAndCompute( InputArray _image, InputArray _mask,
 
     int level_dy = (int)level0_height + border*2;
     Point level_ofs(0, 0);
-    int64_t time2 = cv::getTickCount();
 
     for( level = 0; level < nLevels; level++ )
     {
@@ -1072,7 +1063,6 @@ void ORB_Impl::detectAndCompute( InputArray _image, InputArray _mask,
         maskPyramid.create(bufSize, CV_8U);
 
     Mat prevImg = image, prevMask = mask;
-    int64_t time3 = cv::getTickCount();
 
     // Pre-compute the scale pyramids
     for (level = 0; level < nLevels; ++level)
@@ -1121,7 +1111,6 @@ void ORB_Impl::detectAndCompute( InputArray _image, InputArray _mask,
             prevMask = currMask;
         }
     }
-    int64_t time4 = cv::getTickCount();
 
     if( useOCL )
         copyVectorToUMat(layerOfs, ulayerInfo);
@@ -1155,12 +1144,11 @@ void ORB_Impl::detectAndCompute( InputArray _image, InputArray _mask,
                 std::copy(allKeypoints[level].begin(), allKeypoints[level].end(), std::back_inserter(keypoints));
         }
     }
-    int64_t time5 = cv::getTickCount();
 
     if( do_descriptors )
     {
-        int64_t time6 = cv::getTickCount();
         int dsize = descriptorSize();
+
         nkeypoints = (int)keypoints.size();
         if( nkeypoints == 0 )
         {
@@ -1171,7 +1159,6 @@ void ORB_Impl::detectAndCompute( InputArray _image, InputArray _mask,
         _descriptors.create(nkeypoints, dsize, CV_8U);
         std::vector<Point> pattern;
 
-        int64_t time7 = cv::getTickCount();
         const int npoints = 512;
         Point patternbuf[npoints];
         const Point* pattern0 = (const Point*)bit_pattern_31_;
@@ -1184,7 +1171,6 @@ void ORB_Impl::detectAndCompute( InputArray _image, InputArray _mask,
 
         CV_Assert( wta_k == 2 || wta_k == 3 || wta_k == 4 );
 
-        int64_t time8 = cv::getTickCount();
         if( wta_k == 2 )
             std::copy(pattern0, pattern0 + npoints, std::back_inserter(pattern));
         else
@@ -1192,7 +1178,7 @@ void ORB_Impl::detectAndCompute( InputArray _image, InputArray _mask,
             int ntuples = descriptorSize()*4;
             initializeOrbPattern(pattern0, pattern, ntuples, wta_k, npoints);
         }
-        int64_t time9 = cv::getTickCount();
+
         for( level = 0; level < nLevels; level++ )
         {
             // preprocess the resized image
@@ -1201,7 +1187,6 @@ void ORB_Impl::detectAndCompute( InputArray _image, InputArray _mask,
             //boxFilter(working_mat, working_mat, working_mat.depth(), Size(5,5), Point(-1,-1), true, BORDER_REFLECT_101);
             GaussianBlur(workingMat, workingMat, Size(7, 7), 2, 2, BORDER_REFLECT_101);
         }
-        int64_t time10 = cv::getTickCount();
 
 #ifdef HAVE_OPENCL
         if( useOCL )
@@ -1229,23 +1214,7 @@ void ORB_Impl::detectAndCompute( InputArray _image, InputArray _mask,
             computeOrbDescriptors(imagePyramid, layerInfo, layerScale,
                                   keypoints, descriptors, pattern, dsize, wta_k);
         }
-        int64_t time11 = cv::getTickCount();
-        printf("orb if Time1     = %lld\n", (time7 - time6)/1000);
-        printf("orb if Time2     = %lld\n", (time8 - time7)/1000);
-        printf("orb if Time3     = %lld\n", (time9 - time8)/1000);
-        printf("orb if Time4     = %lld\n", (time10 - time9)/1000);
-        printf("orb if Time5     = %lld\n", (time11 - time10)/1000);
     }
-    int64_t detect_compute_end = cv::getTickCount();
-
-    printf("orb Time func = %lld\n", (detect_compute_end - detect_compute_start)/1000);
-    printf("orb Time1     = %lld\n", (time1 - detect_compute_start)/1000);
-    printf("orb Time2     = %lld\n", (time2 - time1)/1000);
-    printf("orb Time3     = %lld\n", (time3 - time2)/1000);
-    printf("orb Time4     = %lld\n", (time4 - time3)/1000);
-    printf("orb Time5     = %lld\n", (time5 - time4)/1000);
-    printf("orb Time6     = %lld\n", (detect_compute_end - time5)/1000);
-
 }
 
 Ptr<ORB> ORB::create(int nfeatures, float scaleFactor, int nlevels, int edgeThreshold,
