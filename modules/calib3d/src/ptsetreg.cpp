@@ -200,10 +200,8 @@ public:
             return true;
         }
 
-        int64_t start_for = getTickCount();
         for( iter = 0; iter < niters; iter++ )
         {
-            int64_t start_for_in = getTickCount();
             int i, nmodels;
             if( count > modelPoints )
             {
@@ -216,20 +214,16 @@ public:
                 }
             }
 
-            int64_t start_kernel = getTickCount();
             nmodels = cb->runKernel( ms1, ms2, model );
-            int64_t end_kernel = getTickCount();
             if( nmodels <= 0 )
                 continue;
             CV_Assert( model.rows % nmodels == 0 );
             Size modelSize(model.cols, model.rows/nmodels);
 
-            int64_t start_second_for = getTickCount();
             for( i = 0; i < nmodels; i++ )
             {
                 Mat model_i = model.rowRange( i*modelSize.height, (i+1)*modelSize.height );
                 int goodCount = findInliers( m1, m2, model_i, err, mask, threshold );
-                //int64_t end_inliners = getTickCount();
 
                 if( goodCount > MAX(maxGoodCount, modelPoints-1) )
                 {
@@ -239,11 +233,7 @@ public:
                     niters = RANSACUpdateNumIters( confidence, (double)(count - goodCount)/count, modelPoints, niters );
                 }
             }
-            //int64_t end_for_in = getTickCount();
-            //printf("%lld   %lld   %lld\n", (end_for_in - start_for_in)/1000, (end_kernel - start_kernel)/1000, (end_for_in - start_second_for)/1000);
         }
-        //int64_t end_for = getTickCount();
-        //printf("%lld\n", (end_for - start_for)/1000);
 
         if( maxGoodCount > 0 )
         {

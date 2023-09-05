@@ -90,12 +90,10 @@ icvTriangulatePoints(CvMat* projMatr1, CvMat* projMatr2, CvMat* projPoints1, CvM
     CvMat* projPoints[2] = {projPoints1, projPoints2};
     CvMat* projMatrs[2] = {projMatr1, projMatr2};
 
-    //cv::saveTime(cv::getTickCount(), "triangulate for begin");
     /* Solve system for each point */
     for( int i = 0; i < numPoints; i++ )/* For each point */
     {
         /* Fill matrix for current point */
-        //int64_t start_for = cv::getTickCount();
         for( int j = 0; j < 2; j++ )/* For each view */
         {
             float x,y;
@@ -107,24 +105,15 @@ icvTriangulatePoints(CvMat* projMatr1, CvMat* projMatr2, CvMat* projPoints1, CvM
                 matrA(j*2+1, k) = y * cvmGet(projMatrs[j],2,k) - cvmGet(projMatrs[j],1,k);
             }
         }
-        //int64_t end_for = cv::getTickCount();
         /* Solve system for current point */
-
-        //int64_t start_svd = cv::getTickCount();
         cv::SVD::compute(matrA, matrW, matrU, matrV);
-        //int64_t end_svd = cv::getTickCount();
 
         /* Copy computed point */
-        //int64_t start_set = cv::getTickCount();
         cvmSet(points4D,0,i,matrV(3,0));/* X */
         cvmSet(points4D,1,i,matrV(3,1));/* Y */
         cvmSet(points4D,2,i,matrV(3,2));/* Z */
         cvmSet(points4D,3,i,matrV(3,3));/* W */
-        //int64_t end_set = cv::getTickCount();
-
-        //printf("%lld   %lld   %lld   %lld\n", (end_set - start_for)/1000, (end_for - start_for)/1000, (end_svd - start_svd)/1000, (end_set - start_set)/1000);
     }
-    //cv::saveTime(cv::getTickCount(), "triangulate for end");
 }
 
 

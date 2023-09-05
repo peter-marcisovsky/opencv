@@ -33,6 +33,10 @@
 
 #include "usac.hpp"
 
+#define CONST__0_5   0.5f
+#define CONST__1_5   1.5f
+#define CONST__1     1.0f
+
 namespace cv
 {
 
@@ -41,7 +45,6 @@ class EMEstimatorCallback CV_FINAL : public PointSetRegistrator::Callback
 public:
     int runKernel( InputArray _m1, InputArray _m2, OutputArray _model ) const CV_OVERRIDE
     {
-            //int64_t start_func = getTickCount();
         Mat q1 = _m1.getMat(), q2 = _m2.getMat();
         Mat Q1 = q1.reshape(1, (int)q1.total());
         Mat Q2 = q2.reshape(1, (int)q2.total());
@@ -59,24 +62,18 @@ public:
         Q.col(8) = 1.0;
 
         Mat U, W, Vt;
-            //int64_t start_kernel = getTickCount();
         SVD::compute(Q, W, U, Vt, SVD::MODIFY_A | SVD::FULL_UV);
-            //int64_t end_kernel = getTickCount();
 
         Mat EE = Mat(Vt.t()).colRange(5, 9).clone();
         Mat A(10, 20, CV_32F);
         EE = EE.t();
-            //int64_t start_get_coeff = getTickCount();
         getCoeffMat(EE.ptr<float>(), A.ptr<float>());
-            //int64_t end_get_coeff = getTickCount();
-
         EE = EE.t();
 
         A = A.colRange(0, 10).inv() * A.colRange(10, 20);
 
         float b[3 * 13];
         Mat B(3, 13, CV_32F, b);
-            //int64_t time1 = getTickCount();
         for (int i = 0; i < 3; i++)
         {
             Mat arow1 = A.row(i * 2 + 4).clone();
@@ -94,7 +91,6 @@ public:
 
             B.row(i) = row1 - row2;
         }
-            //int64_t time2 = getTickCount();
 
         float c[11];
         Mat coeffs(1, 11, CV_32F, c);
@@ -111,9 +107,7 @@ public:
         c[0] = -b[29]*b[20]*b[12]+b[29]*b[7]*b[25]+b[16]*b[33]*b[12]-b[16]*b[7]*b[38]+b[3]*b[20]*b[38]-b[3]*b[25]*b[33];
 
         std::vector<Complex<float> > roots;
-            //int64_t time3 = getTickCount();
         solvePoly(coeffs, roots);
-            //int64_t time4 = getTickCount();
 
         std::vector<float> xs, ys, zs;
         int count = 0;
@@ -121,7 +115,6 @@ public:
         Mat ematrix(10*3, 3, CV_32F);
         float* e = ematrix.ptr<float>();
 
-            //int64_t start_for = getTickCount();
         for (size_t i = 0; i < roots.size(); i++)
         {
             if (fabs(roots[i].im) > 1e-10) continue;
@@ -154,57 +147,10 @@ public:
             memcpy(e + count * 9, Evec.ptr(), 9 * sizeof(float));
             count++;
         }
-            //int64_t end_for = getTickCount();
 
         ematrix.rowRange(0, count*3).copyTo(_model);
-
-            //printf("Time           %lld\n", (time2 - time1)/1000);
-            //printf("Time           %lld\n", (time3 - time2)/1000);
-            //printf("Time           %lld\n", (time4 - time3)/1000);
-            //printf("Time           %lld\n", (time5 - time4)/1000);
-            //printf("Time           %lld\n", (time6 - time5)/1000);
-            //printf("Time           %lld\n", (time7 - time6)/1000);
-            //printf("Time           %lld\n", (time8 - time7)/1000);
-            //printf("Time           %lld\n", (time9 - time8)/1000);
-            //printf("Time           %lld\n", (time10 - time9)/1000);
-            //printf("Time           %lld\n", (time11 - time10)/1000);
-            //printf("Time           %lld\n", (time12 - time11)/1000);
-
-            //int64_t end_func = getTickCount();
-
-            //printf("Kernel - SVD           %lld\n", (end_kernel - start_kernel)/1000);
-            //printf("Kernel - get coeff     %lld\n", (end_get_coeff - start_get_coeff)/1000);
-            //printf("Kernel - for           %lld\n", (end_for - start_for)/1000);
-            //printf("Kernel - Poly          %lld\n", (time4 - time3)/1000);
-            //printf("Kernel - func          %lld\n\n", (end_func - start_func)/1000);
-
-            //printf("%lld\n", start_func);
-            //printf("%lld\n", start_kernel);
-            //printf("%lld\n", end_kernel);
-            //printf("%lld\n", start_get_coeff);
-            //printf("%lld\n", end_get_coeff);
-            //printf("%lld\n", time1);
-            //printf("%lld\n", time2);
-            //printf("%lld\n", time3);
-            //printf("%lld\n", time4);
-            //printf("%lld\n", start_for);
-            //printf("%lld\n", end_for);
-            //printf("%lld\n\n", end_func);
         return count;
     }
-
-#define CONST__0_5__FLOAT   0.5f
-#define CONST__0_5__DOUBLE  0.5000000000
-
-#define CONST__1_5__FLOAT   1.5f
-#define CONST__1_5__DOUBLE  1.5000000000
-
-#define CONST__1__FLOAT   1.0f
-#define CONST__1__DOUBLE  1.
-
-#define CONST__0_5   CONST__0_5__FLOAT
-#define CONST__1_5   CONST__1_5__FLOAT
-#define CONST__1     CONST__1__FLOAT
 
 protected:
     void getCoeffMat(float *e, float *A) const
@@ -649,7 +595,6 @@ int cv::recoverPose( InputArray E, InputArray _points1, InputArray _points2,
     points2 = points2.t();
 
     Mat R1, R2, t;
-    //saveTime(getTickCount(), "decompose Begin");
     decomposeEssentialMat(E, R1, R2, t);
     Mat P0 = Mat::eye(3, 4, R1.type());
     Mat P1(3, 4, R1.type()), P2(3, 4, R1.type()), P3(3, 4, R1.type()), P4(3, 4, R1.type());
@@ -665,9 +610,7 @@ int cv::recoverPose( InputArray E, InputArray _points1, InputArray _points2,
     std::vector<Mat> allTriangulations(4);
     Mat Q;
 
-    //saveTime(getTickCount(), "triangulate1 begin"); 
-    triangulatePoints(P0, P1, points1, points2, Q);     // 36000 - 40000
-    //saveTime(getTickCount(), "triangulate1 end");
+    triangulatePoints(P0, P1, points1, points2, Q);
     if(triangulatedPoints.needed())
         Q.copyTo(allTriangulations[0]);
     Mat mask1 = Q.row(2).mul(Q.row(3)) > 0;
@@ -680,7 +623,6 @@ int cv::recoverPose( InputArray E, InputArray _points1, InputArray _points2,
     mask1 = (Q.row(2) > 0) & mask1;
     mask1 = (Q.row(2) < distanceThresh) & mask1;
 
-    //saveTime(getTickCount(), "triangulate2");
     triangulatePoints(P0, P2, points1, points2, Q);
     if(triangulatedPoints.needed())
         Q.copyTo(allTriangulations[1]);
@@ -694,7 +636,6 @@ int cv::recoverPose( InputArray E, InputArray _points1, InputArray _points2,
     mask2 = (Q.row(2) > 0) & mask2;
     mask2 = (Q.row(2) < distanceThresh) & mask2;
 
-    //saveTime(getTickCount(), "triangulate3");
     triangulatePoints(P0, P3, points1, points2, Q);
     if(triangulatedPoints.needed())
         Q.copyTo(allTriangulations[2]);
@@ -708,7 +649,6 @@ int cv::recoverPose( InputArray E, InputArray _points1, InputArray _points2,
     mask3 = (Q.row(2) > 0) & mask3;
     mask3 = (Q.row(2) < distanceThresh) & mask3;
 
-    //saveTime(getTickCount(), "triangulate4");
     triangulatePoints(P0, P4, points1, points2, Q);
     if(triangulatedPoints.needed())
         Q.copyTo(allTriangulations[3]);
